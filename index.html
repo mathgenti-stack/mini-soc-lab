@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>Mini SOC Lab</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/browser@1.9.2/build/stlite.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module">
+      // Static build for Cloudflare Pages: runs streamlit_app.py in the browser via stlite (Pyodide).
+      // Keep this list in sync with the Python/data files the app needs at runtime.
+      import { mount } from "https://cdn.jsdelivr.net/npm/@stlite/browser@1.9.2/build/stlite.js";
+
+      const paths = [
+        "streamlit_app.py",
+        "config/detection_rules.json",
+        "data/sample_auth_logs.csv",
+        "data/sample_auth_logs_ground_truth.csv",
+        "soc_lab/__init__.py",
+        "soc_lab/cli.py",
+        "soc_lab/config.py",
+        "soc_lab/filters.py",
+        "soc_lab/log_generator.py",
+        "soc_lab/log_loader.py",
+        "soc_lab/metrics.py",
+        "soc_lab/models.py",
+        "soc_lab/reporting.py",
+        "soc_lab/training.py",
+        "soc_lab/detection/__init__.py",
+        "soc_lab/detection/context.py",
+        "soc_lab/detection/engine.py",
+        "soc_lab/detection/playbooks.py",
+        "soc_lab/detection/rules.py",
+      ];
+
+      mount(
+        {
+          requirements: ["pandas"],
+          entrypoint: "streamlit_app.py",
+          files: Object.fromEntries(paths.map((p) => [p, { url: "./" + p }])),
+          streamlitConfig: { "client.toolbarMode": "viewer" },
+        },
+        document.getElementById("root"),
+      );
+    </script>
+  </body>
+</html>
