@@ -5,3 +5,4 @@ __pycache__/
 reports/
 notas_de_estudo/
 .streamlit/secrets.toml
+training_answers/

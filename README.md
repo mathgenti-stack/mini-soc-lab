@@ -25,8 +25,9 @@ It is a learning and portfolio project built to practise first-line (Tier 1) SOC
 | **Detection engine** | Five rules (R001-R005) with thresholds in `config/detection_rules.json`. Each alert records trigger criteria, severity rationale, supporting event IDs, facts, hypotheses and a possible MITRE ATT&CK mapping. |
 | **Dashboard** | KPIs, alerts by severity, a timeline of failed logons and alerts, an alert queue, a searchable event explorer, filters (date, user, IP, event type, severity), live threshold tuning, and a data-quality view. |
 | **Investigation** | For any alert: context checks, benign explanations, false-positive considerations, recommended steps, proposed containment, evidence timeline, evidence-based conclusion, limitations, status and analyst notes. Export to Markdown and CSV. |
+| **Training mode** | Practise triage before seeing the answer: 15 questions in five stages (understand, collect facts, add context, decide, communicate), in Portuguese or English. The tool's analysis stays hidden until the analyst reveals it; each answer is then shown next to a reference and the ground-truth scenario. Answers are saved locally in `training_answers/` and included in the exported report. |
 | **CLI** | `generate`, `analyse` and `report` commands for working without the dashboard. |
-| **Tests** | 99 pytest tests covering rules, thresholds, validation, metrics, filters, reporting, the CLI and a dashboard smoke test. |
+| **Tests** | 113 pytest tests covering rules, thresholds, validation, metrics, filters, reporting, training mode, the CLI and dashboard tests. |
 
 ## Technology stack
 
@@ -124,7 +125,7 @@ python -m soc_lab.cli report --all
 python -m pytest
 ```
 
-Expected result: `99 passed`. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
+Expected result: `113 passed`. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
 
 ## Sample detection scenarios
 
