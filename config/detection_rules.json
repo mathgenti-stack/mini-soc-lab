@@ -1,0 +1,44 @@
+{
+  "environment": {
+    "internal_networks": ["10.0.0.0/8"],
+    "service_account_prefixes": ["svc_"],
+    "business_hours": {
+      "start_hour": 7,
+      "end_hour": 19,
+      "weekdays": [0, 1, 2, 3, 4]
+    }
+  },
+  "rules": {
+    "R001": {
+      "enabled": true,
+      "window_minutes": 10,
+      "failure_threshold": 5,
+      "high_severity_threshold": 15
+    },
+    "R002": {
+      "enabled": true,
+      "lookback_minutes": 30,
+      "min_failures": 3,
+      "critical_failure_threshold": 10
+    },
+    "R003": {
+      "enabled": true,
+      "entity_fields": ["source_ip", "username"],
+      "min_attempts": 15,
+      "failure_rate_threshold": 0.5,
+      "high_failure_rate": 0.9
+    },
+    "R004": {
+      "enabled": true,
+      "window_minutes": 30,
+      "min_distinct_accounts": 5,
+      "high_distinct_accounts": 10
+    },
+    "R005": {
+      "enabled": true,
+      "lockout_success_window_minutes": 120,
+      "rapid_source_change_minutes": 15,
+      "baseline_learning_days": 2
+    }
+  }
+}

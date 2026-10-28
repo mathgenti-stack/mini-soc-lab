@@ -1,0 +1,10 @@
+[project]
+name = "mini-soc-lab"
+version = "1.0.0"
+description = "Synthetic authentication log analysis, detection and alert triage lab."
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "tests"]
+addopts = "-ra"
