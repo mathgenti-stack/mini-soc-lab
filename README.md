@@ -188,3 +188,7 @@ More detail: [docs/limitations_and_false_positives.md](docs/limitations_and_fals
 | [docs/dashboard_guide.md](docs/dashboard_guide.md) | Dashboard walkthrough and example uses |
 | [docs/sample_incident_report.md](docs/sample_incident_report.md) | Example generated report |
 | [docs/interview_prep.md](docs/interview_prep.md) | Demo script and interview Q&A |
+
+## Licence
+
+Released under the [MIT Licence](LICENSE).
