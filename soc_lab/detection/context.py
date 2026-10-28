@@ -8,6 +8,8 @@ from functools import lru_cache
 
 import pandas as pd
 
+from ..i18n import Msg
+
 
 @dataclass(frozen=True)
 class DetectionContext:
@@ -33,10 +35,10 @@ class DetectionContext:
         address = _parse_ip(ip)
         return address is not None and any(address in network for network in self.internal_networks)
 
-    def classify_ip(self, ip: str) -> str:
+    def classify_ip(self, ip: str) -> Msg:
         if _parse_ip(ip) is None:
-            return "unparseable address"
-        return "internal" if self.is_internal(ip) else "external"
+            return Msg("ip.unparseable")
+        return Msg("ip.internal") if self.is_internal(ip) else Msg("ip.external")
 
     def is_business_hours(self, ts: pd.Timestamp) -> bool:
         return ts.weekday() in self.business_weekdays and self.business_start_hour <= ts.hour < self.business_end_hour

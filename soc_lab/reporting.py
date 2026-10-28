@@ -13,6 +13,7 @@ import pandas as pd
 
 from .detection.context import DetectionContext
 from .detection.playbooks import COMMON_LIMITATIONS, Playbook, get_playbook
+from .i18n import DEFAULT_LANGUAGE, Msg, t, tr
 from .metrics import alerts_to_frame
 from .models import INCIDENT_STATUSES, Alert, EventType, Result, format_timestamp
 
@@ -52,7 +53,7 @@ def build_investigation_report(alert: Alert, events: pd.DataFrame, config: dict,
     related = [other.alert_id for other in (all_alerts or []) if other.alert_id != alert.alert_id and (
         set(other.usernames) & set(alert.usernames) or set(other.source_ips) & set(alert.source_ips))]
     if related:
-        findings.append(f"Related alerts sharing an account or source address: {', '.join(related)}.")
+        findings.append(Msg("finding.related", ids=", ".join(related)))
     playbook = get_playbook(alert.playbook_key)
     return InvestigationReport(
         incident_id=alert.alert_id.replace("ALR", "INC"),
@@ -82,13 +83,13 @@ def _context_checks(alert: Alert, events: pd.DataFrame, ctx: DetectionContext) -
                        & (before["result"] == Result.SUCCESS)]
         prior_users = sorted(prior["username"].unique())
         if prior.empty:
-            history = "no successful logons from this address before the alert"
+            history = Msg("finding.history.none")
         else:
-            history = (f"{len(prior)} earlier successful logon(s) from this address, by: "
-                       f"{', '.join(prior_users[:5])}{' ...' if len(prior_users) > 5 else ''}")
-        findings.append(f"Source {ip} is {ctx.classify_ip(ip)}; dataset shows {history}.")
+            history = Msg("finding.history.prior", count=len(prior),
+                          users=f"{', '.join(prior_users[:5])}{' ...' if len(prior_users) > 5 else ''}")
+        findings.append(Msg("finding.source", ip=ip, kind=ctx.classify_ip(ip), history=history))
     if alert.source_ips and all(ctx.is_internal(ip) for ip in alert.source_ips):
-        benign.append("all source addresses are internal")
+        benign.append(Msg("benign.all_internal"))
 
     users = alert.usernames
     follow_up = successes[successes["username"].isin(users) & successes["source_ip"].isin(alert.source_ips)
@@ -96,70 +97,59 @@ def _context_checks(alert: Alert, events: pd.DataFrame, ctx: DetectionContext) -
     success_observed = not follow_up.empty
     if success_observed:
         accounts = ", ".join(sorted(follow_up["username"].unique()))
-        findings.append(f"Successful logon(s) from the alert's source address(es) were recorded for: {accounts} "
-                        f"(between first activity and one hour after the last).")
+        findings.append(Msg("finding.success", accounts=accounts))
     else:
-        findings.append("No successful logon from the alert's source address(es) for the affected account(s) was "
-                        "recorded between first activity and one hour after the last.")
+        findings.append(Msg("finding.no_success"))
 
     never_succeeded = [user for user in users if successes[successes["username"] == user].empty]
     if never_succeeded:
-        findings.append(f"Account name(s) with no successful logon anywhere in the dataset: "
-                        f"{', '.join(never_succeeded)} (they may not exist in the directory).")
+        findings.append(Msg("finding.never_succeeded", users=", ".join(never_succeeded)))
 
     for user in users:
         if ctx.is_service_account(user):
-            findings.append(f"'{user}' matches the service account naming convention.")
-            benign.append(f"'{user}' appears to be a service account")
+            findings.append(Msg("finding.service_account", user=user))
+            benign.append(Msg("benign.service_account", user=user))
         changes = events[(events["username"] == user) & (events["event_type"] == EventType.PASSWORD_CHANGE)
                          & events["timestamp"].between(alert.first_seen - PASSWORD_CHANGE_LOOKBACK, alert.last_seen)]
         for _, change in changes.iterrows():
-            findings.append(f"Password change recorded for '{user}' at {format_timestamp(change['timestamp'])}.")
-            benign.append(f"recent password change for '{user}'")
+            findings.append(Msg("finding.password_change", user=user, time=format_timestamp(change["timestamp"])))
+            benign.append(Msg("benign.password_change", user=user))
         unlocks = events[(events["username"] == user) & (events["event_type"] == EventType.ACCOUNT_UNLOCK)
                          & events["timestamp"].between(alert.first_seen, alert.last_seen + FOLLOW_UP_WINDOW)]
         for _, unlock in unlocks.iterrows():
-            findings.append(f"Account unlock for '{user}' recorded at {format_timestamp(unlock['timestamp'])} from "
-                            f"{unlock['source_ip']} ({ctx.classify_ip(unlock['source_ip'])}).")
-            benign.append(f"account unlock recorded for '{user}'")
+            findings.append(Msg("finding.unlock", user=user, time=format_timestamp(unlock["timestamp"]),
+                                ip=unlock["source_ip"], kind=ctx.classify_ip(unlock["source_ip"])))
+            benign.append(Msg("benign.unlock", user=user))
         changes_after = events[(events["username"] == user) & (events["event_type"] == EventType.PASSWORD_CHANGE)
                                & (events["timestamp"] > alert.last_seen)]
         if not changes_after.empty and ctx.is_service_account(user):
-            findings.append(f"A later password change for '{user}' was recorded at "
-                            f"{format_timestamp(changes_after['timestamp'].iloc[0])}.")
+            findings.append(Msg("finding.later_password_change", user=user,
+                                time=format_timestamp(changes_after["timestamp"].iloc[0])))
     return findings, sorted(set(benign)), success_observed
 
 
-def _conclusion(alert: Alert, ctx: DetectionContext, benign: list[str], success_observed: bool) -> str:
+def _conclusion(alert: Alert, ctx: DetectionContext, benign: list[str], success_observed: bool) -> Msg:
     external = any(not ctx.is_internal(ip) for ip in alert.source_ips)
     if success_observed and external:
-        text = ("The evidence shows activity matching the detection criteria together with at least one successful "
-                "logon from an external source address. This is consistent with possible unauthorised access but "
-                "does not confirm it. Escalation to a senior analyst is recommended if the account owner cannot "
-                "confirm the activity.")
+        text = Msg("conclusion.external_success")
     elif benign:
-        text = ("The evidence shows activity matching the detection criteria. Contextual indicators support a "
-                f"possible benign explanation ({'; '.join(benign)}). These indicators must be verified, for example "
-                "against service desk tickets or change records, before the alert is closed.")
+        text = Msg("conclusion.benign", indicators=Msg.join(benign, "; "))
     elif external:
-        text = ("The evidence shows activity from an external source address matching the detection criteria. No "
-                "successful logon from that address for the affected account(s) was recorded in this dataset, so "
-                "the attempts appear to have been unsuccessful based on the available data.")
+        text = Msg("conclusion.external_no_success")
     else:
-        text = ("The evidence shows activity matching the detection criteria. The available data does not establish "
-                "whether it was malicious; further investigation is required to classify this alert.")
-    return text + " This conclusion is based only on the authentication events in this dataset."
+        text = Msg("conclusion.undetermined")
+    return Msg.join([text, Msg("conclusion.basis")])
 
 
 # ---------------------------------------------------------------------------
 # Export
 # ---------------------------------------------------------------------------
-def _bullets(items: list[str]) -> str:
-    return "\n".join(f"- {item}" for item in items) if items else "- None recorded."
+def _bullets(items: list[str], lang: str = DEFAULT_LANGUAGE) -> str:
+    return "\n".join(f"- {tr(item, lang)}" for item in items) if items else f"- {t('report.none_recorded', lang)}"
 
 
-def _numbered(items: list[str]) -> str:
-    return "\n".join(f"{n}. {item}" for n, item in enumerate(items, start=1))
+def _numbered(items: list[str], lang: str = DEFAULT_LANGUAGE) -> str:
+    return "\n".join(f"{n}. {tr(item, lang)}" for n, item in enumerate(items, start=1))
 
 
 def _markdown_table(frame: pd.DataFrame) -> str:
@@ -173,86 +163,89 @@ def _markdown_table(frame: pd.DataFrame) -> str:
     return "\n".join([header, divider, *rows])
 
 
-def render_markdown(report: InvestigationReport) -> str:
+def render_markdown(report: InvestigationReport, lang: str = DEFAULT_LANGUAGE) -> str:
+    """The investigation report as Markdown, in `lang`. Log data (evidence table, IDs) is never translated."""
+    def label(key: str, **params) -> str:
+        return t(f"report.{key}", lang, **params)
+
     alert = report.alert
     timeline = report.evidence.head(MARKDOWN_EVIDENCE_LIMIT)
     truncated = len(report.evidence) - len(timeline)
-    timeline_note = (f"\n\n_{truncated} further event(s) omitted here; see the CSV evidence export for the full list._"
-                     if truncated > 0 else "")
-    affected = ", ".join(alert.usernames) or "Not applicable"
-    return f"""# Incident Investigation Report: {report.incident_id}
+    timeline_note = f"\n\n_{label('truncated', count=truncated)}_" if truncated > 0 else ""
+    affected = ", ".join(alert.usernames) or label("not_applicable")
+    return f"""# {label('title')}: {report.incident_id}
 
-**{alert.title}**
+**{tr(alert.title, lang)}**
 
-| Field | Value |
+| {label('field.field')} | {label('field.value')} |
 | --- | --- |
-| Incident ID | {report.incident_id} |
-| Alert ID | {alert.alert_id} |
-| Detection rule | {alert.rule_id} - {alert.rule_name}{f' ({alert.pattern})' if alert.pattern else ''} |
-| Severity | {alert.severity.value} |
-| Incident status | {report.status} |
-| First seen | {format_timestamp(alert.first_seen)} |
-| Last seen | {format_timestamp(alert.last_seen)} |
-| Affected account(s) | {affected} |
-| Source IP address(es) | {', '.join(alert.source_ips) or 'Not recorded'} |
-| Host(s) | {', '.join(alert.hostnames) or 'Not recorded'} |
-| Supporting events | {alert.event_count} |
-| MITRE ATT&CK (possible) | {alert.mitre_attack or 'Not mapped'} |
-| Report generated | {format_timestamp(report.generated_at)} |
+| {label('field.incident_id')} | {report.incident_id} |
+| {label('field.alert_id')} | {alert.alert_id} |
+| {label('field.rule')} | {alert.rule_id} - {tr(alert.rule_name, lang)}{f' ({alert.pattern})' if alert.pattern else ''} |
+| {label('field.severity')} | {t(f'severity.{alert.severity.value}', lang)} |
+| {label('field.status')} | {t(f'status.{report.status}', lang)} |
+| {label('field.first_seen')} | {format_timestamp(alert.first_seen)} |
+| {label('field.last_seen')} | {format_timestamp(alert.last_seen)} |
+| {label('field.accounts')} | {affected} |
+| {label('field.source_ips')} | {', '.join(alert.source_ips) or label('not_recorded')} |
+| {label('field.hosts')} | {', '.join(alert.hostnames) or label('not_recorded')} |
+| {label('field.supporting_events')} | {alert.event_count} |
+| {label('field.mitre')} | {alert.mitre_attack or label('not_mapped')} |
+| {label('field.generated')} | {format_timestamp(report.generated_at)} |
 
-> This report was generated from synthetic lab data. An alert is a lead for investigation, not proof of malicious activity.
+> {label('disclaimer')}
 
-## 1. Why this alert was generated
+## {label('section.why')}
 
-{alert.trigger_reason}
+{tr(alert.trigger_reason, lang)}
 
-**Severity rationale:** {alert.severity_reason}
+**{label('severity_rationale')}:** {tr(alert.severity_reason, lang)}
 
-## 2. Observed behaviour (facts from the logs)
+## {label('section.observed')}
 
-{_bullets(alert.observed_facts)}
+{_bullets(alert.observed_facts, lang)}
 
-## 3. Context checks
+## {label('section.context')}
 
-{_bullets(report.context_findings)}
+{_bullets(report.context_findings, lang)}
 
-## 4. Hypotheses (not confirmed)
+## {label('section.hypotheses')}
 
-{_bullets(alert.hypotheses)}
+{_bullets(alert.hypotheses, lang)}
 
-## 5. Potential benign explanations
+## {label('section.benign')}
 
-{_bullets(report.playbook.benign_explanations)}
+{_bullets(report.playbook.benign_explanations, lang)}
 
-## 6. False-positive considerations
+## {label('section.false_positive')}
 
-{_bullets(report.playbook.false_positive_considerations)}
+{_bullets(report.playbook.false_positive_considerations, lang)}
 
-## 7. Event timeline (supporting log events)
+## {label('section.timeline')}
 
 {_markdown_table(timeline)}{timeline_note}
 
-## 8. Recommended investigation steps
+## {label('section.steps')}
 
-{_numbered(report.playbook.investigation_steps)}
+{_numbered(report.playbook.investigation_steps, lang)}
 
-## 9. Suggested containment actions
+## {label('section.containment')}
 
-Only to be proposed through the organisation's change and incident processes, and only if the investigation supports them.
+{label('containment_note')}
 
-{_bullets(report.playbook.containment_actions)}
+{_bullets(report.playbook.containment_actions, lang)}
 
-## 10. Evidence-based conclusion
+## {label('section.conclusion')}
 
-{report.conclusion}
+{tr(report.conclusion, lang)}
 
-## 11. Analyst notes
+## {label('section.notes')}
 
-{report.analyst_notes or '_No analyst notes recorded._'}
+{report.analyst_notes or '_' + label('no_notes') + '_'}
 
-## 12. Limitations of this investigation
+## {label('section.limitations')}
 
-{_bullets(report.limitations)}
+{_bullets(report.limitations, lang)}
 """
 
 

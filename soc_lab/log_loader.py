@@ -12,7 +12,17 @@ from pathlib import Path
 
 import pandas as pd
 
+from .i18n import Msg
 from .models import ALL_COLUMNS, OPTIONAL_COLUMNS, REQUIRED_COLUMNS, VALID_EVENT_TYPES, VALID_RESULTS
+
+# Rejection reasons are stored in the data as fixed English codes; these keys translate them for display.
+MISSING_FIELD_PREFIX = "missing required field: "
+REJECTION_REASON_KEYS = {
+    "invalid timestamp": "rejection.invalid_timestamp",
+    "unknown event_type": "rejection.unknown_event_type",
+    "unknown result": "rejection.unknown_result",
+    "duplicate event_id with different content": "rejection.duplicate_event_id",
+}
 
 
 class LogFileError(Exception):
@@ -40,6 +50,13 @@ class DataQualityReport:
         return counts.rename_axis("rejection_reason").reset_index(name="rows")
 
 
+def rejection_reason_msg(reason: str):
+    """Translatable form of a stored rejection reason (unknown reasons are returned unchanged)."""
+    if reason.startswith(MISSING_FIELD_PREFIX):
+        return Msg("rejection.missing_field", column=reason[len(MISSING_FIELD_PREFIX):])
+    return Msg(REJECTION_REASON_KEYS[reason]) if reason in REJECTION_REASON_KEYS else reason
+
+
 @dataclass
 class LoadResult:
     events: pd.DataFrame
@@ -59,16 +76,16 @@ def load_events(source: str | Path | io.IOBase | bytes, source_name: str | None 
         path = Path(source)
         name = source_name or str(path)
         if not path.exists():
-            raise LogFileError(f"Log file not found: {path}")
+            raise LogFileError(Msg("error.log_not_found", path=str(path)))
         if path.is_dir():
-            raise LogFileError(f"Expected a CSV file but got a directory: {path}")
+            raise LogFileError(Msg("error.log_is_directory", path=str(path)))
         if path.stat().st_size == 0:
-            return _empty_result(name, "The log file is empty - no events to analyse.")
+            return _empty_result(name, Msg("warning.log_file_empty"))
         reader_input = path
     elif isinstance(source, bytes):
         name = source_name or "uploaded data"
         if not source.strip():
-            return _empty_result(name, "The uploaded data is empty - no events to analyse.")
+            return _empty_result(name, Msg("warning.upload_empty"))
         reader_input = io.BytesIO(source)
     else:
         name = source_name or "uploaded data"
@@ -77,15 +94,15 @@ def load_events(source: str | Path | io.IOBase | bytes, source_name: str | None 
     try:
         raw = pd.read_csv(reader_input, dtype=str, keep_default_na=False)
     except pd.errors.EmptyDataError:
-        return _empty_result(name, "The log source contains no data.")
+        return _empty_result(name, Msg("warning.source_no_data"))
     except (pd.errors.ParserError, UnicodeDecodeError) as exc:
-        raise LogFileError(f"Could not parse {name} as CSV: {exc}") from exc
+        raise LogFileError(Msg("error.csv_parse", name=name, detail=str(exc))) from exc
 
     events, quality = validate_events(raw, name)
     return LoadResult(events, quality)
 
 
-def _empty_result(name: str, message: str) -> LoadResult:
+def _empty_result(name: str, message: Msg) -> LoadResult:
     return LoadResult(empty_events_frame(), DataQualityReport(source=name, warnings=[message]))
 
 
@@ -97,15 +114,15 @@ def validate_events(raw: pd.DataFrame, source_name: str = "data") -> tuple[pd.Da
 
     missing = [column for column in REQUIRED_COLUMNS if column not in frame.columns]
     if missing:
-        raise LogFileError(f"{source_name} is missing required column(s): {', '.join(missing)}")
+        raise LogFileError(Msg("error.missing_columns", name=source_name, columns=", ".join(missing)))
     for column in OPTIONAL_COLUMNS:
         if column not in frame.columns:
             frame[column] = ""
-            quality.warnings.append(f"Optional column '{column}' not present; filled with blanks.")
+            quality.warnings.append(Msg("warning.optional_column_missing", column=column))
     frame = frame[list(ALL_COLUMNS)].fillna("").astype(str)
 
     if frame.empty:
-        quality.warnings.append("The log source has a header but no events.")
+        quality.warnings.append(Msg("warning.header_only"))
         return empty_events_frame(), quality
 
     for column in ALL_COLUMNS:
@@ -124,7 +141,7 @@ def validate_events(raw: pd.DataFrame, source_name: str = "data") -> tuple[pd.Da
 
     missing_fields = frame[list(REQUIRED_COLUMNS)].eq("")
     for column in REQUIRED_COLUMNS:
-        reasons = reasons.mask((reasons == "") & missing_fields[column], f"missing required field: {column}")
+        reasons = reasons.mask((reasons == "") & missing_fields[column], f"{MISSING_FIELD_PREFIX}{column}")
 
     parsed = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce", format="ISO8601")
     reasons = reasons.mask((reasons == "") & parsed.isna(), "invalid timestamp")
@@ -151,7 +168,7 @@ def validate_events(raw: pd.DataFrame, source_name: str = "data") -> tuple[pd.Da
     quality.rejected_rows = rejected.reset_index(drop=True)
     quality.rows_accepted = len(clean)
     if quality.exact_duplicates_removed:
-        quality.warnings.append(f"{quality.exact_duplicates_removed} exact duplicate row(s) removed.")
+        quality.warnings.append(Msg("warning.duplicates_removed", count=quality.exact_duplicates_removed))
     if quality.rows_rejected:
-        quality.warnings.append(f"{quality.rows_rejected} row(s) rejected - see the rejected rows table.")
+        quality.warnings.append(Msg("warning.rows_rejected", count=quality.rows_rejected))
     return clean, quality

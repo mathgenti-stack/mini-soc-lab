@@ -16,13 +16,14 @@ def test_questions_are_complete_and_unique():
     assert len(training.QUESTION_IDS) == len(set(training.QUESTION_IDS))
     for question in training.QUESTIONS:
         assert question.stage in stage_ids
-        assert question.pt and question.en and question.hint_pt and question.hint_en
+        for lang in training.LANGUAGES:
+            assert question.text(lang) and question.hint(lang, start=7, end=19)
     assert all(training.questions_for_stage(stage) for stage in stage_ids)
 
 
 def test_time_hint_uses_configured_business_hours():
     question = next(q for q in training.QUESTIONS if q.id == "time")
-    assert "07:00" in question.hint("pt", start=7, end=19) and "19:00" in question.hint("en", start=7, end=19)
+    assert "07:00" in question.hint("pt-BR", start=7, end=19) and "19:00" in question.hint("en", start=7, end=19)
 
 
 def test_scenario_guides_use_valid_statuses():
@@ -87,7 +88,7 @@ def test_load_progress_tolerates_corrupt_file(tmp_path):
 
 
 def test_answers_to_markdown_groups_by_stage():
-    text = training.answers_to_markdown({"rule": "R001", "verdict": "Ataque provável"}, "pt")
+    text = training.answers_to_markdown({"rule": "R001", "verdict": "Ataque provável"}, "pt-BR")
     assert "### 1. Entender o alerta" in text and "### 4. Decidir" in text
     assert "Ataque provável" in text and "2. Coletar os fatos" not in text
     assert training.answers_to_markdown({}, "en") == ""
@@ -106,13 +107,13 @@ def test_dashboard_training_flow(tmp_path, monkeypatch):
 
     # The tool's conclusion is hidden until the analyst reveals it.
     assert not any("Evidence-based conclusion" in m.value for m in app.markdown)
-    reveal = next(t for t in app.toggle if t.label.startswith("Mostrar resposta"))
+    reveal = next(t for t in app.toggle if t.label.startswith("Show answer"))
     assert reveal.disabled
 
-    verdict = next(t for t in app.text_area if t.label.startswith("Qual é o seu veredito"))
+    verdict = next(t for t in app.text_area if t.label.startswith("What is your verdict"))
     verdict.set_value("Ataque provável: password spray com sucesso em l.taylor.").run()
-    next(s for s in app.selectbox if s.label.startswith("Status do incidente")).set_value("Escalated").run()
-    next(t for t in app.toggle if t.label.startswith("Mostrar resposta")).set_value(True).run()
+    next(s for s in app.selectbox if s.label.startswith("Incident status")).set_value("Escalated").run()
+    next(t for t in app.toggle if t.label.startswith("Show answer")).set_value(True).run()
     assert not app.exception
     assert any("Evidence-based conclusion" in m.value for m in app.markdown)
     assert any("Escalated ✅" in s.value for s in app.success)

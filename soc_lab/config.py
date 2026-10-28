@@ -6,6 +6,8 @@ import copy
 import json
 from pathlib import Path
 
+from .i18n import Msg
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config" / "detection_rules.json"
 
@@ -29,11 +31,11 @@ def load_config(path: str | Path | None = None) -> dict:
     """Read the JSON configuration file and validate it."""
     config_path = Path(path) if path else DEFAULT_CONFIG_PATH
     if not config_path.exists():
-        raise ConfigError(f"Configuration file not found: {config_path}")
+        raise ConfigError(Msg("config_error.not_found", path=str(config_path)))
     try:
         config = json.loads(config_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        raise ConfigError(f"Configuration file is not valid JSON: {exc}") from exc
+        raise ConfigError(Msg("config_error.invalid_json", detail=str(exc))) from exc
     validate_config(config)
     return config
 
@@ -41,37 +43,37 @@ def load_config(path: str | Path | None = None) -> dict:
 def validate_config(config: dict) -> None:
     """Check that the structure and values make sense. Raises ConfigError otherwise."""
     if not isinstance(config, dict) or "rules" not in config or "environment" not in config:
-        raise ConfigError("Configuration must contain 'environment' and 'rules' sections.")
+        raise ConfigError(Msg("config_error.sections"))
 
     env = config["environment"]
     for key in ("internal_networks", "business_hours"):
         if key not in env:
-            raise ConfigError(f"Missing environment setting: '{key}'.")
+            raise ConfigError(Msg("config_error.missing_environment", key=key))
     hours = env["business_hours"]
     if not (0 <= hours.get("start_hour", -1) < hours.get("end_hour", -1) <= 24):
-        raise ConfigError("business_hours must satisfy 0 <= start_hour < end_hour <= 24.")
+        raise ConfigError(Msg("config_error.business_hours"))
 
     for rule_id, params in REQUIRED_RULE_PARAMS.items():
         rule = config["rules"].get(rule_id)
         if rule is None:
-            raise ConfigError(f"Missing configuration for rule {rule_id}.")
+            raise ConfigError(Msg("config_error.missing_rule", rule=rule_id))
         for param in params:
             if param not in rule:
-                raise ConfigError(f"Rule {rule_id} is missing parameter '{param}'.")
+                raise ConfigError(Msg("config_error.missing_param", rule=rule_id, param=param))
             value = rule[param]
             if param == "entity_fields":
                 if not value or not set(value) <= {"source_ip", "username"}:
-                    raise ConfigError(f"{rule_id}.entity_fields must list 'source_ip' and/or 'username'.")
+                    raise ConfigError(Msg("config_error.entity_fields", rule=rule_id))
                 continue
             if isinstance(value, bool) or not isinstance(value, (int, float)):
-                raise ConfigError(f"{rule_id}.{param} must be a number, got {value!r}.")
+                raise ConfigError(Msg("config_error.not_number", rule=rule_id, param=param, value=repr(value)))
             if param in RATE_PARAMS and not 0 < value <= 1:
-                raise ConfigError(f"{rule_id}.{param} must be between 0 and 1, got {value}.")
+                raise ConfigError(Msg("config_error.rate_range", rule=rule_id, param=param, value=value))
             if param in NON_NEGATIVE_PARAMS:
                 if value < 0:
-                    raise ConfigError(f"{rule_id}.{param} must not be negative, got {value}.")
+                    raise ConfigError(Msg("config_error.negative", rule=rule_id, param=param, value=value))
             elif value <= 0:
-                raise ConfigError(f"{rule_id}.{param} must be greater than zero, got {value}.")
+                raise ConfigError(Msg("config_error.not_positive", rule=rule_id, param=param, value=value))
 
 
 def with_overrides(config: dict, overrides: dict[str, dict]) -> dict:
