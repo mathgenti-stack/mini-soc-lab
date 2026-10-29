@@ -14,6 +14,7 @@ from datetime import date
 from pathlib import Path
 
 from .config import DEFAULT_CONFIG_PATH, PROJECT_ROOT, ConfigError, load_config
+from .correlation import cases_to_csv, correlate_alerts, correlation_window
 from .detection import run_detection
 from .detection.export import FORMATS, export_rules
 from .log_generator import GeneratorSettings, generate_events, write_dataset
@@ -59,11 +60,19 @@ def _cmd_analyse(args: argparse.Namespace) -> int:
     for alert in alerts:
         print(f"{alert.alert_id}  {alert.severity.value:<8}  {alert.rule_id}  "
               f"{alert.first_seen:%Y-%m-%d %H:%M}  {alert.title}")
-    if args.export_csv:
-        path = Path(args.export_csv)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(alerts_to_csv(alerts), encoding="utf-8", newline="")
-        print(f"\nAlert list written to {path}")
+
+    window = correlation_window(_config)
+    cases = correlate_alerts(alerts, window)
+    print(f"\nCases: {len(cases)} (alerts sharing an account or address, at most {window:g} min apart)")
+    for case in cases:
+        print(f"{case.case_id}  {case.severity.value:<8}  {', '.join(case.alert_ids):<28}  {case.title}")
+    for option, text, label in ((args.export_csv, alerts_to_csv(alerts), "Alert list"),
+                                (args.export_cases_csv, cases_to_csv(cases), "Case list")):
+        if option:
+            path = Path(option)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8", newline="")
+            print(f"\n{label} written to {path}")
     return 0
 
 
@@ -117,6 +126,7 @@ def build_parser() -> argparse.ArgumentParser:
         cmd.set_defaults(handler=handler)
         if name == "analyse":
             cmd.add_argument("--export-csv", help="Also write the alert list to this CSV file.")
+            cmd.add_argument("--export-cases-csv", help="Also write the case list to this CSV file.")
         else:
             group = cmd.add_mutually_exclusive_group(required=True)
             group.add_argument("--alert-id", help="Alert to report on, e.g. ALR-0010.")

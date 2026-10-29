@@ -22,6 +22,7 @@
 | `detection/export.py` | Sigma / Splunk SPL / Sentinel KQL export built from the configuration | config values |
 | `metrics.py` / `filters.py` | KPIs, timeline, filtering | models |
 | `reporting.py` | Context checks, conclusion, Markdown/CSV export | context, playbooks |
+| `correlation.py` | Groups related alerts into cases | models |
 | `cli.py` | Command-line entry point | all of the above |
 | `streamlit_app.py` | Dashboard UI | all of the above |
 

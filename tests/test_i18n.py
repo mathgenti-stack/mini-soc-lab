@@ -148,7 +148,7 @@ def test_dashboard_defaults_to_english(app):
     app.run()
     assert not app.exception
     assert app.segmented_control(key="lang").value == "en"
-    assert [tab.label for tab in app.tabs] == ["Overview", "Alerts", "Event Explorer", "Investigation",
+    assert [tab.label for tab in app.tabs] == ["Overview", "Alerts", "Cases", "Event Explorer", "Investigation",
                                               "Data Quality", "Rule Export", "About"]
 
 

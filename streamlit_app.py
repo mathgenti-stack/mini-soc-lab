@@ -12,6 +12,7 @@ import pandas as pd
 import streamlit as st
 
 from soc_lab.config import DEFAULT_CONFIG_PATH, ConfigError, load_config, with_overrides
+from soc_lab.correlation import case_for_alert, cases_to_csv, cases_to_frame, correlate_alerts, correlation_window
 from soc_lab.detection import run_detection
 from soc_lab.detection.export import CODE_LANGUAGES, FIELD_MAPPING, FORMAT_NAMES, FORMATS, export_rules, export_zip
 from soc_lab.filters import filter_alerts, filter_events
@@ -30,7 +31,7 @@ SEVERITY_NAMES = [s.value for s in reversed(SEVERITY_ORDER)]  # Critical first
 SEVERITY_COLOURS = {"Critical": "#d03b3b", "High": "#ec835a", "Medium": "#fab219", "Low": "#2a78d6"}
 RESULT_COLOURS = {"SUCCESS": "#2a78d6", "FAILURE": "#eb6834", "INFO": "#8a8984"}
 DATA_SOURCES = ["sample", "generate", "upload"]
-TAB_IDS = ["overview", "alerts", "events", "investigation", "quality", "export", "about"]
+TAB_IDS = ["overview", "alerts", "cases", "events", "investigation", "quality", "export", "about"]
 
 st.set_page_config(page_title="Mini SOC Lab", page_icon=":shield:", layout="wide")
 
@@ -163,6 +164,8 @@ with st.sidebar.expander(T("ui.thresholds.title")):
                                                     rules["R004"]["min_distinct_accounts"])},
         "R005": {"enabled": threshold(st.checkbox, "R005", "enabled", rules["R005"]["enabled"])},
     }
+    case_window = st.number_input(T("ui.thresholds.correlation_window"), 0, 1440,
+                                  int(correlation_window(base_config)), key="thr_correlation_window")
 try:
     config = with_overrides(base_config, overrides)
 except ConfigError as exc:
@@ -210,12 +213,19 @@ view_events = filter_events(events, start_day, end_day, selected_users, selected
 view_alerts = filter_alerts(alerts, start_day, end_day, selected_users, selected_ips, selected_severities)
 kpis = compute_kpis(view_events, view_alerts)
 
+# Cases are built from every alert, then shown when at least one of their alerts passes the filters,
+# so a filter never splits a case in two.
+cases = correlate_alerts(alerts, case_window)
+view_alert_ids = {a.alert_id for a in view_alerts}
+view_cases = [case for case in cases if view_alert_ids & set(case.alert_ids)]
+token = training.dataset_token(source_name)
+
 # Tab labels change with the language, so the open tab is remembered by id ("active_tab") and the
 # tab widget gets one key per language; a language switch reopens the same tab under its new name.
 tab_labels = [T(f"ui.tab.{tab}") for tab in TAB_IDS]
 tab_key = f"main_tabs_{lang}"
 active_tab = st.session_state.get("active_tab", TAB_IDS[0])
-tab_overview, tab_alerts, tab_events, tab_investigate, tab_quality, tab_export, tab_about = st.tabs(
+tab_overview, tab_alerts, tab_cases, tab_events, tab_investigate, tab_quality, tab_export, tab_about = st.tabs(
     tab_labels, key=tab_key, default=tab_labels[TAB_IDS.index(active_tab)], on_change="rerun")
 chosen_tab = st.session_state.get(tab_key)
 st.session_state["active_tab"] = TAB_IDS[tab_labels.index(chosen_tab)] if chosen_tab in tab_labels else active_tab
@@ -224,13 +234,14 @@ st.session_state["active_tab"] = TAB_IDS[tab_labels.index(chosen_tab)] if chosen
 # Overview
 # ---------------------------------------------------------------------------
 with tab_overview:
-    m = st.columns(6)
+    m = st.columns(7)
     m[0].metric(T("ui.kpi.events"), f"{kpis['total_events']:,}")
     m[1].metric(T("ui.kpi.successful"), f"{kpis['successful_logins']:,}")
     m[2].metric(T("ui.kpi.failed"), f"{kpis['failed_logins']:,}", help=T("ui.kpi.failed_help"))
     m[3].metric(T("ui.kpi.failure_rate"), f"{kpis['failure_rate']:.1%}")
     m[4].metric(T("ui.kpi.lockouts"), kpis["account_lockouts"])
     m[5].metric(T("ui.kpi.alerts"), kpis["total_alerts"])
+    m[6].metric(T("ui.kpi.cases"), len(view_cases), help=T("ui.kpi.cases_help"))
 
     left, right = st.columns([1, 2])
     with left:
@@ -306,6 +317,82 @@ with tab_alerts:
         st.download_button(T("ui.alerts.export"), alerts_to_csv(view_alerts), "alerts.csv", "text/csv",
                            key="export_alerts")
         st.caption(T("ui.alerts.caption"))
+
+# ---------------------------------------------------------------------------
+# Cases (related alerts grouped by soc_lab/correlation.py)
+# ---------------------------------------------------------------------------
+with tab_cases:
+    st.subheader(T("ui.cases.header", count=len(view_cases)))
+    st.caption(T("ui.cases.caption", window=case_window))
+    if not view_cases:
+        st.info(T("ui.cases.none"))
+    else:
+        case_frame = cases_to_frame(view_cases).assign(
+            severity=lambda f: f["severity"].map(severity_label), title=[L(c.title) for c in view_cases])
+        st.dataframe(
+            case_frame[["case_id", "severity", "alert_count", "alert_ids", "rule_ids", "title", "first_seen",
+                        "last_seen", "event_count"]],
+            hide_index=True, width="stretch",
+            column_config={"case_id": T("ui.cases.col.case"), "severity": T("ui.chart.severity"),
+                           "alert_count": st.column_config.NumberColumn(T("ui.cases.col.alert_count")),
+                           "alert_ids": T("ui.cases.col.alert_ids"), "rule_ids": T("ui.cases.col.rules"),
+                           "title": T("ui.col.title"),
+                           "first_seen": st.column_config.DatetimeColumn(T("ui.col.first_seen"),
+                                                                         format="YYYY-MM-DD HH:mm"),
+                           "last_seen": st.column_config.DatetimeColumn(T("ui.col.last_seen"),
+                                                                        format="YYYY-MM-DD HH:mm"),
+                           "event_count": st.column_config.NumberColumn(T("ui.col.events"))},
+        )
+        st.download_button(T("ui.cases.export"), cases_to_csv(view_cases), "cases.csv", "text/csv",
+                           key="export_cases")
+
+        case_labels = {c.case_id: f"{c.case_id} | {severity_label(c.severity.value)} | {L(c.title)}"
+                       for c in view_cases}
+        case_id = st.selectbox(T("ui.cases.select"), list(case_labels), format_func=case_labels.get,
+                               key=f"case_select_{token}")
+        case = next(c for c in view_cases if c.case_id == case_id)
+
+        info = st.columns(4)
+        info[0].metric(T("ui.inv.severity"), severity_label(case.severity.value))
+        info[1].metric(T("ui.cases.col.alert_count"), len(case.alerts))
+        info[2].metric(T("ui.inv.supporting_events"), len(case.event_ids))
+        info[3].metric(T("ui.cases.col.rules"), ", ".join(case.rule_ids))
+
+        st.markdown(f"#### {T('ui.cases.alerts')}")
+        members = alerts_to_frame(case.alerts).assign(
+            severity=lambda f: f["severity"].map(severity_label), title=[L(a.title) for a in case.alerts])
+        st.dataframe(members[["alert_id", "severity", "rule_id", "title", "entity", "first_seen", "last_seen"]],
+                     hide_index=True, width="stretch",
+                     column_config={"alert_id": T("ui.col.alert_id"), "severity": T("ui.chart.severity"),
+                                    "rule_id": T("ui.col.rule"), "title": T("ui.col.title"),
+                                    "entity": T("ui.col.entity"),
+                                    "first_seen": st.column_config.DatetimeColumn(T("ui.col.first_seen"),
+                                                                                  format="YYYY-MM-DD HH:mm"),
+                                    "last_seen": st.column_config.DatetimeColumn(T("ui.col.last_seen"),
+                                                                                 format="YYYY-MM-DD HH:mm")})
+
+        st.markdown(f"#### {T('ui.cases.why')}")
+        if case.links:
+            st.markdown("\n".join(f"- {L(link.reason)}" for link in case.links))
+        else:
+            st.caption(T("ui.cases.single"))
+        if case.mitre_attack:
+            st.markdown(f"**MITRE ATT&CK:** {' | '.join(case.mitre_attack)}")
+
+        st.markdown(f"#### {T('ui.cases.timeline')}")
+        alerts_for_event: dict[str, list[str]] = {}
+        for member in case.alerts:
+            for event_id in member.evidence_event_ids:
+                alerts_for_event.setdefault(event_id, []).append(member.alert_id)
+        case_events = events[events["event_id"].isin(case.event_ids)].sort_values("timestamp", kind="stable")
+        case_events = case_events.assign(alerts=case_events["event_id"].map(lambda e: ", ".join(alerts_for_event[e])))
+        st.dataframe(case_events[["timestamp", "event_id", "alerts", "username", "source_ip", "event_type", "result",
+                                  "failure_reason", "hostname"]],
+                     hide_index=True, width="stretch",
+                     column_config={"timestamp": st.column_config.DatetimeColumn("timestamp",
+                                                                                 format="YYYY-MM-DD HH:mm:ss"),
+                                    "alerts": T("ui.cases.col.alerts_for_event")})
+        st.caption(T("ui.cases.severity_note"))
 
 # ---------------------------------------------------------------------------
 # Event explorer (raw log data: column names and values are kept as recorded)
@@ -509,7 +596,6 @@ with tab_investigate:
     if not view_alerts:
         st.info(T("ui.alerts.none"))
     else:
-        token = training.dataset_token(source_name)
         progress = {a.alert_id: training.load_progress(training.answers_path(ANSWERS_DIR, source_name, a.alert_id))
                     for a in view_alerts}
 
@@ -537,6 +623,11 @@ with tab_investigate:
             report = build_investigation_report(alert, events, config, all_alerts=alerts, status=status,
                                                 analyst_notes=notes)
             st.markdown(f"### {report.incident_id} - {L(alert.title)}")
+            alert_case = case_for_alert(cases, alert.alert_id)
+            if alert_case:
+                others = [other for other in alert_case.alert_ids if other != alert.alert_id]
+                st.info(T("ui.inv.case", case=alert_case.case_id, others=", ".join(others)) if others
+                        else T("ui.inv.case_alone", case=alert_case.case_id))
             render_alert_summary(alert, status, show_mitre=True)
             render_tool_analysis(alert, report)
             st.markdown(f"#### {T('ui.inv.timeline')}")

@@ -75,6 +75,12 @@ def validate_config(config: dict) -> None:
             elif value <= 0:
                 raise ConfigError(Msg("config_error.not_positive", rule=rule_id, param=param, value=value))
 
+    # Optional: how alerts are grouped into cases (soc_lab/correlation.py).
+    correlation = config.get("correlation", {})
+    window = correlation.get("window_minutes", 0) if isinstance(correlation, dict) else None
+    if isinstance(window, bool) or not isinstance(window, (int, float)) or window < 0:
+        raise ConfigError(Msg("config_error.correlation", value=repr(window)))
+
 
 def with_overrides(config: dict, overrides: dict[str, dict]) -> dict:
     """Return a validated copy of `config` with selected rule parameters replaced.

@@ -8,6 +8,9 @@
       "weekdays": [0, 1, 2, 3, 4]
     }
   },
+  "correlation": {
+    "window_minutes": 120
+  },
   "rules": {
     "R001": {
       "enabled": true,
