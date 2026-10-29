@@ -12,6 +12,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+from soc_lab.case_store import CaseStore, alert_fingerprint, dataset_key, default_db_path
 from soc_lab.config import DEFAULT_CONFIG_PATH, ConfigError, load_config, with_overrides
 from soc_lab.correlation import case_for_alert, cases_to_csv, cases_to_frame, correlate_alerts, correlation_window
 from soc_lab.detection import run_detection
@@ -45,8 +46,14 @@ st.set_page_config(page_title="Mini SOC Lab", page_icon=":shield:", layout="wide
 # Language. Every widget below has a fixed key, so switching language only changes
 # the text on screen - selections, answers and progress stay where they are.
 # ---------------------------------------------------------------------------
+# The language can come from the link (?lang=pt-BR), and the link follows the selector, so a shared URL
+# opens in the same language. The default is read once per session so the widget never resets.
+if "initial_lang" not in st.session_state:
+    st.session_state["initial_lang"] = st.query_params.get("lang") if st.query_params.get("lang") in LANGUAGES         else DEFAULT_LANGUAGE
 lang = st.sidebar.segmented_control(t("ui.language_selector"), list(LANGUAGES), format_func=LANGUAGES.get,
-                                    default=DEFAULT_LANGUAGE, required=True, key="lang")
+                                    default=st.session_state["initial_lang"], required=True, key="lang")
+if st.query_params.get("lang") != lang:
+    st.query_params["lang"] = lang
 
 
 def T(key: str, **params) -> str:
@@ -76,6 +83,11 @@ def run_pipeline(csv_bytes: bytes, source_name: str, config_json: str):
     result = load_events(csv_bytes, source_name)
     alerts = run_detection(result.events, json.loads(config_json))
     return result, alerts
+
+
+@st.cache_resource
+def triage_store(path: str) -> CaseStore:
+    return CaseStore(path)
 
 
 @st.cache_data(show_spinner=False)
@@ -225,6 +237,23 @@ except LogFileError as exc:
 
 events, quality = load_result.events, load_result.quality
 
+# Triage status and notes of the free investigation mode live in SQLite (soc_lab/case_store.py).
+store = triage_store(str(default_db_path()))
+dataset = dataset_key(source_name, csv_bytes)
+triage = store.all_for(dataset)
+
+
+def triage_status(alert) -> str:
+    record = triage.get(alert_fingerprint(alert))
+    return record.status if record else "New"
+
+
+def save_triage(alert, status_key: str, notes_key: str) -> None:
+    store.save(dataset, alert, st.session_state[status_key], st.session_state[notes_key])
+
+
+st.sidebar.caption(T("ui.store.saved", path=store.path.name) if store.persistent else T("ui.store.memory"))
+
 st.title(T("ui.title"))
 st.caption(T("ui.source_caption", source=source_name, accepted=quality.rows_accepted, rejected=quality.rows_rejected,
              duplicates=quality.exact_duplicates_removed))
@@ -344,12 +373,14 @@ with tab_alerts:
         st.info(T("ui.alerts.none"))
     else:
         frame = alerts_to_frame(view_alerts).assign(
-            severity=lambda f: f["severity"].map(severity_label), title=[L(a.title) for a in view_alerts])
+            severity=lambda f: f["severity"].map(severity_label), title=[L(a.title) for a in view_alerts],
+            status=[status_label(triage_status(a)) for a in view_alerts])
         st.dataframe(
-            frame[["alert_id", "severity", "rule_id", "title", "entity", "first_seen", "last_seen", "event_count",
-                   "source_ips", "mitre_attack"]],
+            frame[["alert_id", "severity", "status", "rule_id", "title", "entity", "first_seen", "last_seen",
+                   "event_count", "source_ips", "mitre_attack"]],
             hide_index=True, width="stretch",
             column_config={"alert_id": T("ui.col.alert_id"), "severity": T("ui.chart.severity"),
+                           "status": T("ui.inv.status"),
                            "rule_id": T("ui.col.rule"), "title": T("ui.col.title"), "entity": T("ui.col.entity"),
                            "first_seen": st.column_config.DatetimeColumn(T("ui.col.first_seen"),
                                                                          format="YYYY-MM-DD HH:mm"),
@@ -358,8 +389,11 @@ with tab_alerts:
                            "event_count": st.column_config.NumberColumn(T("ui.col.events")),
                            "source_ips": T("ui.col.source_ips"), "mitre_attack": "MITRE ATT&CK"},
         )
-        st.download_button(T("ui.alerts.export"), alerts_to_csv(view_alerts), "alerts.csv", "text/csv",
-                           key="export_alerts")
+        export_alerts, export_triage = st.columns(2)
+        export_alerts.download_button(T("ui.alerts.export"), alerts_to_csv(view_alerts), "alerts.csv", "text/csv",
+                                      key="export_alerts")
+        export_triage.download_button(T("ui.store.export"), store.to_csv(dataset, view_alerts), "triage.csv",
+                                      "text/csv", key="export_triage")
         st.caption(T("ui.alerts.caption"))
 
 # ---------------------------------------------------------------------------
@@ -404,10 +438,13 @@ with tab_cases:
 
         st.markdown(f"#### {T('ui.cases.alerts')}")
         members = alerts_to_frame(case.alerts).assign(
-            severity=lambda f: f["severity"].map(severity_label), title=[L(a.title) for a in case.alerts])
-        st.dataframe(members[["alert_id", "severity", "rule_id", "title", "entity", "first_seen", "last_seen"]],
+            severity=lambda f: f["severity"].map(severity_label), title=[L(a.title) for a in case.alerts],
+            status=[status_label(triage_status(a)) for a in case.alerts])
+        st.dataframe(members[["alert_id", "severity", "status", "rule_id", "title", "entity", "first_seen",
+                              "last_seen"]],
                      hide_index=True, width="stretch",
                      column_config={"alert_id": T("ui.col.alert_id"), "severity": T("ui.chart.severity"),
+                                    "status": T("ui.inv.status"),
                                     "rule_id": T("ui.col.rule"), "title": T("ui.col.title"),
                                     "entity": T("ui.col.entity"),
                                     "first_seen": st.column_config.DatetimeColumn(T("ui.col.first_seen"),
@@ -690,10 +727,23 @@ with tab_investigate:
                                                      enrichment=enrichment)
             render_training(alert, base_report, progress[alert_id], token)
         else:
+            # Keys use the alert fingerprint, so a threshold change that renumbers alerts never mixes up notes.
+            fingerprint = alert_fingerprint(alert)
+            status_key, notes_key = f"status_free_{fingerprint}", f"notes_{fingerprint}"
+            saved_triage = triage.get(fingerprint)
+            if status_key not in st.session_state:
+                st.session_state[status_key] = saved_triage.status if saved_triage else "New"
+                st.session_state[notes_key] = saved_triage.notes if saved_triage else ""
             col_status, col_notes = st.columns([1, 2])
+            # Saved in on_change callbacks, which run before the page is redrawn, so the alert queue
+            # and the cases already show the new status.
+            save_args = (alert, status_key, notes_key)
             status = col_status.selectbox(T("ui.inv.status_free"), INCIDENT_STATUSES, format_func=status_label,
-                                          key=f"status_free_{token}_{alert_id}")
-            notes = col_notes.text_area(T("ui.inv.notes"), key=f"notes_{token}_{alert_id}", height=80)
+                                          key=status_key, on_change=save_triage, args=save_args)
+            notes = col_notes.text_area(T("ui.inv.notes"), key=notes_key, height=80, on_change=save_triage,
+                                        args=save_args)
+            if saved_triage:
+                col_status.caption(T("ui.store.last_saved", time=saved_triage.updated_at))
             report = build_investigation_report(alert, events, config, all_alerts=alerts, status=status,
                                                 analyst_notes=notes, enrichment=enrichment)
             st.markdown(f"### {report.incident_id} - {L(alert.title)}")
@@ -708,6 +758,15 @@ with tab_investigate:
             render_evidence(report)
             render_enrichment(report)
             render_exports(report)
+            history = store.history(dataset, alert)
+            if history:
+                with st.expander(T("ui.store.history", count=len(history))):
+                    history_frame = pd.DataFrame(history).assign(
+                        status=lambda f: f["status"].map(status_label))
+                    st.dataframe(history_frame, hide_index=True, width="stretch",
+                                 column_config={"changed_at": T("ui.store.changed_at"),
+                                                "alert_id": T("ui.col.alert_id"), "status": T("ui.inv.status"),
+                                                "notes": T("ui.store.notes")})
 
 # ---------------------------------------------------------------------------
 # Data quality

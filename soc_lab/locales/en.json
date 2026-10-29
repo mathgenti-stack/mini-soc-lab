@@ -607,5 +607,12 @@
   "conversion.skip.invalid_record": "Record could not be read",
   "conversion.error.encoding": "the file is not UTF-8 or UTF-16 text ({detail}).",
   "conversion.error.xml": "invalid XML ({detail}).",
-  "conversion.error.json": "invalid JSON ({detail})."
+  "conversion.error.json": "invalid JSON ({detail}).",
+  "ui.store.saved": "Triage status and notes are saved in a local SQLite database ({path}).",
+  "ui.store.memory": "Triage status and notes are kept for this session only (no writable database here, for example in the browser build).",
+  "ui.store.export": "Export triage status and notes (CSV)",
+  "ui.store.last_saved": "Saved {time}",
+  "ui.store.history": "Change history ({count})",
+  "ui.store.changed_at": "Changed at (UTC)",
+  "ui.store.notes": "Notes"
 }

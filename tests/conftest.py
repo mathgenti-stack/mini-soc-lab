@@ -6,6 +6,12 @@ from soc_lab.log_generator import generate_events
 from soc_lab.log_loader import validate_events
 
 
+@pytest.fixture(autouse=True)
+def isolated_triage_db(tmp_path, monkeypatch):
+    """Every test gets its own SQLite file, so tests never write into the project folder."""
+    monkeypatch.setenv("SOC_LAB_DB", str(tmp_path / "triage.sqlite3"))
+
+
 @pytest.fixture
 def config():
     return load_config()

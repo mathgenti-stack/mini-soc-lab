@@ -29,10 +29,11 @@ It is a learning and portfolio project built to practise first-line (Tier 1) SOC
 | **IP enrichment (offline)** | Geolocation, ASN and threat-intelligence lookups from local, fictional files in `data/enrichment/` - nothing is sent to the internet. Shown in investigations, reports and the Event Explorer, plus a distance check for rapid source changes. See [docs/enrichment.md](docs/enrichment.md). |
 | **Case correlation** | Related alerts (same account or source address, close in time) are grouped into cases, so one activity is triaged once. The 18 sample alerts become 9 cases, one per scenario. See [docs/correlation.md](docs/correlation.md). |
 | **Rule export** | Detection as code: the same rules exported as **Sigma**, **Splunk SPL** and **Microsoft Sentinel KQL**, built from the current thresholds. Available in the dashboard (with downloads) and from the CLI. See [docs/rule_export.md](docs/rule_export.md). |
-| **Languages** | The whole interface - menus, alerts, playbooks, training questions, feedback and the Markdown report - is available in English (default) and Brazilian Portuguese, switched from the sidebar without losing answers or progress. Texts live in `soc_lab/locales/*.json`; log data, IDs and CSV exports are never translated. |
+| **Triage store** | Incident status and analyst notes from the free investigation mode are saved in a local SQLite database (`case_store/triage.sqlite3`) with a full change history, shown in the alert queue and in cases, and used by the CLI report. See [docs/triage_store.md](docs/triage_store.md). |
+| **Languages** | The whole interface - menus, alerts, playbooks, training questions, feedback and the Markdown report - is available in English (default) and Brazilian Portuguese, switched from the sidebar without losing answers or progress. The language is kept in the link (`?lang=pt-BR`), so a shared URL opens in the same language. Texts live in `soc_lab/locales/*.json`; log data, IDs and CSV exports are never translated. |
 | **Training mode** | Practise triage before seeing the answer: 15 questions in five stages (understand, collect facts, add context, decide, communicate). The tool's analysis stays hidden until the analyst reveals it; each answer is then shown next to a reference and the ground-truth scenario. Answers are saved locally in `training_answers/` and included in the exported report. |
-| **CLI** | `generate`, `analyse`, `report`, `convert`, `export-rules` and `lookup-ip` commands for working without the dashboard. |
-| **Tests** | 200 pytest tests covering rules, thresholds, validation, real log formats, metrics, filters, reporting, training mode, translations, rule export, case correlation, IP enrichment, the CLI and dashboard tests. |
+| **CLI** | `generate`, `analyse`, `report`, `triage`, `convert`, `export-rules` and `lookup-ip` commands for working without the dashboard. |
+| **Tests** | 212 pytest tests covering rules, thresholds, validation, real log formats, metrics, filters, reporting, training mode, translations, rule export, case correlation, IP enrichment, the triage store, the CLI and dashboard tests. |
 
 ## Technology stack
 
@@ -77,6 +78,7 @@ mini-soc-lab/
 │   ├── filters.py             Event and alert filtering
 │   ├── reporting.py           Investigation reports and exports
 │   ├── correlation.py         Groups related alerts into cases
+│   ├── case_store.py          SQLite store for triage status, notes and history
 │   ├── enrichment.py          Offline IP enrichment (geolocation, ASN, threat intel)
 │   ├── training.py            Training-mode questionnaire and reference answers
 │   ├── i18n.py                Translation lookup (t() and Msg)
@@ -136,6 +138,10 @@ python -m soc_lab.cli analyse --export-csv reports/alerts.csv --export-cases-csv
 python -m soc_lab.cli report --alert-id ALR-0010
 python -m soc_lab.cli report --all
 
+# Record triage (the dashboard does the same); report then uses this status and these notes
+python -m soc_lab.cli triage --alert-id ALR-0010 --status Escalated --notes "User did not sign in"
+python -m soc_lab.cli triage
+
 # Export the rules as Sigma, Splunk SPL and Sentinel KQL to rules_export/
 python -m soc_lab.cli export-rules
 
@@ -149,7 +155,7 @@ python -m soc_lab.cli lookup-ip 203.0.113.88 203.0.113.120
 python -m pytest
 ```
 
-Expected result: `200 passed`. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
+Expected result: `212 passed`. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
 
 ## Sample detection scenarios
 
@@ -182,14 +188,13 @@ The ground-truth file (`data/sample_auth_logs_ground_truth.csv`) exists for lear
 - Enrichment (geolocation, ASN, threat intelligence) uses small offline, fictional files, not real feeds.
 - Business hours are in UTC, so UK daylight saving time is not modelled.
 - Rules are threshold-based. They can be evaded by slow or distributed activity, and the thresholds need tuning per environment.
-- Incident status and analyst notes are held in the browser session and are not persisted.
+- Triage status and notes are saved in a local SQLite file. In the in-browser build (Cloudflare) they last only for the session. Training-mode answers are saved separately, as JSON files.
 
 More detail: [docs/limitations_and_false_positives.md](docs/limitations_and_false_positives.md).
 
 ## Future improvements
 
 - Read binary Windows `.evtx` files directly (today they must be exported to XML first).
-- Persist case status and notes in SQLite.
 - Per-user behavioural baselines that go beyond "seen before".
 
 ## Ethical and safety considerations
@@ -210,6 +215,7 @@ More detail: [docs/limitations_and_false_positives.md](docs/limitations_and_fals
 | [docs/limitations_and_false_positives.md](docs/limitations_and_false_positives.md) | Known gaps and false-positive handling |
 | [docs/dashboard_guide.md](docs/dashboard_guide.md) | Dashboard walkthrough and example uses |
 | [docs/enrichment.md](docs/enrichment.md) | Offline IP enrichment: data files, what is shown where, and its limits |
+| [docs/triage_store.md](docs/triage_store.md) | How triage status, notes and history are stored in SQLite |
 | [docs/correlation.md](docs/correlation.md) | How alerts are grouped into cases, and the limits of that grouping |
 | [docs/rule_export.md](docs/rule_export.md) | Sigma / SPL / KQL export, field mapping, differences from the lab |
 | [docs/sample_incident_report.md](docs/sample_incident_report.md) | Example generated report |

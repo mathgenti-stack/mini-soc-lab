@@ -16,10 +16,10 @@ Start the dashboard with `streamlit run streamlit_app.py` and open http://localh
 | Tab | Contents |
 | --- | --- |
 | Overview | KPIs (events, successful/failed logons, failure rate, lockouts, alerts), alerts by severity, a timeline of failed logons per hour with alert markers, and the top failure sources |
-| Alerts | The alert queue for the current filters, with CSV export |
+| Alerts | The alert queue for the current filters, with each alert's triage status; CSV export of alerts and of triage |
 | Cases | Related alerts grouped into cases: alerts in each case, why they were grouped, a combined evidence timeline, and CSV export |
 | Event Explorer | Every filtered event, with free-text search across all fields and CSV export; an expander shows the offline enrichment of the external addresses in view |
-| Investigation | A full report for a selected alert, including offline IP enrichment; status and analyst notes; Markdown and CSV export |
+| Investigation | A full report for a selected alert, including offline IP enrichment; status and analyst notes saved in SQLite, with change history; Markdown and CSV export |
 | Data Quality | Rows read, accepted and rejected, duplicates removed, and the rejected rows with reasons |
 | Rule Export | The rules as Sigma, Splunk SPL and Sentinel KQL, built from the current thresholds, with downloads and the field mapping |
 | About | Scope and safety notes |

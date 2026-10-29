@@ -6,6 +6,7 @@
     python -m soc_lab.cli report   --alert-id ALR-0010 | --all  [--output-dir reports]
     python -m soc_lab.cli export-rules [--format all|sigma|spl|kql] [--output-dir rules_export]
     python -m soc_lab.cli lookup-ip 203.0.113.88 [more addresses]
+    python -m soc_lab.cli triage   [--alert-id ALR-0010 --status Escalated --notes "..."]
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
+from .case_store import CaseStore, dataset_key, default_db_path
 from .config import DEFAULT_CONFIG_PATH, PROJECT_ROOT, ConfigError, load_config
 from .correlation import cases_to_csv, correlate_alerts, correlation_window
 from .detection import run_detection
@@ -24,6 +26,7 @@ from .log_generator import GeneratorSettings, generate_events, write_dataset
 from .log_loader import LogFileError, load_events
 from .parsers import FORMATS as LOG_FORMATS, ConversionError, convert
 from .metrics import compute_kpis
+from .models import INCIDENT_STATUSES
 from .reporting import alerts_to_csv, build_investigation_report, save_report
 
 DEFAULT_LOG_PATH = PROJECT_ROOT / "data" / "sample_auth_logs.csv"
@@ -43,15 +46,21 @@ def _cmd_generate(args: argparse.Namespace) -> int:
 
 
 def _load(args: argparse.Namespace):
-    """Load a lab CSV directly, or convert a real-world log format first."""
+    """Load a lab CSV directly, or convert a real-world log format first.
+
+    Also returns the dataset key used by the triage store (name + content hash, as in the dashboard).
+    """
     path = Path(args.input)
     if args.format == "lab_csv" or not path.is_file():
-        return load_events(args.input)  # load_events reports missing files and directories
-    conversion = convert(path.read_bytes(), args.format, path.name, args.year)
+        result = load_events(args.input)  # load_events reports missing files and directories
+        return result, dataset_key(path.name, path.read_bytes())
+    data = path.read_bytes()
+    conversion = convert(data, args.format, path.name, args.year)
     if conversion.fmt == "lab_csv":
-        return load_events(args.input)
+        return load_events(args.input), dataset_key(path.name, data)
     _print_conversion(conversion)
-    return load_events(conversion.to_csv_bytes(), str(path))
+    converted = conversion.to_csv_bytes()
+    return load_events(converted, str(path)), dataset_key(path.name, converted)
 
 
 def _print_conversion(conversion) -> None:
@@ -78,14 +87,14 @@ def _cmd_convert(args: argparse.Namespace) -> int:
 
 
 def _analyse(args: argparse.Namespace):
-    result = _load(args)
+    result, dataset = _load(args)
     config = load_config(args.config)
     alerts = run_detection(result.events, config)
-    return result, config, alerts
+    return result, config, alerts, dataset
 
 
 def _cmd_analyse(args: argparse.Namespace) -> int:
-    result, _config, alerts = _analyse(args)
+    result, _config, alerts, _dataset = _analyse(args)
     quality, kpis = result.quality, compute_kpis(result.events, alerts)
     print(f"Source: {quality.source}")
     print(f"Rows read: {quality.rows_read} | accepted: {quality.rows_accepted} | rejected: {quality.rows_rejected} "
@@ -116,7 +125,7 @@ def _cmd_analyse(args: argparse.Namespace) -> int:
 
 
 def _cmd_report(args: argparse.Namespace) -> int:
-    result, config, alerts = _analyse(args)
+    result, config, alerts, dataset = _analyse(args)
     selected = alerts if args.all else [a for a in alerts if a.alert_id == args.alert_id]
     if not selected:
         print(f"No alert with ID {args.alert_id}. Run 'analyse' to list alert IDs.", file=sys.stderr)
@@ -124,10 +133,45 @@ def _cmd_report(args: argparse.Namespace) -> int:
     enrichment = None if args.no_enrichment else load_enrichment()
     for warning in enrichment.warnings if enrichment else []:
         print(f"  ! {warning}", file=sys.stderr)
+    with CaseStore(default_db_path()) as store:  # status and notes recorded in the dashboard or with 'triage'
+        triaged = {alert.alert_id: store.get(dataset, alert) for alert in selected}
     for alert in selected:
-        report = build_investigation_report(alert, result.events, config, all_alerts=alerts, enrichment=enrichment)
+        saved = triaged[alert.alert_id]
+        report = build_investigation_report(alert, result.events, config, all_alerts=alerts, enrichment=enrichment,
+                                            status=saved.status if saved else "New",
+                                            analyst_notes=saved.notes if saved else "")
         markdown_path, csv_path = save_report(report, args.output_dir)
         print(f"{report.incident_id}: {markdown_path} | {csv_path}")
+    return 0
+
+
+def _cmd_triage(args: argparse.Namespace) -> int:
+    _result, _config, alerts, dataset = _analyse(args)
+    with CaseStore(default_db_path()) as store:
+        return _triage(args, store, alerts, dataset)
+
+
+def _triage(args: argparse.Namespace, store: CaseStore, alerts, dataset: str) -> int:
+    if args.alert_id:
+        alert = next((a for a in alerts if a.alert_id == args.alert_id), None)
+        if alert is None:
+            print(f"No alert with ID {args.alert_id}. Run 'analyse' to list alert IDs.", file=sys.stderr)
+            return 1
+        current = store.get(dataset, alert)
+        status = args.status or (current.status if current else "New")
+        notes = args.notes if args.notes is not None else (current.notes if current else "")
+        changed = store.save(dataset, alert, status, notes)
+        print(f"{alert.alert_id}: {status}" + ("" if changed else " (unchanged)"))
+        for entry in store.history(dataset, alert):
+            print(f"  {entry['changed_at']}  {entry['status']:<30}  {entry['notes']}")
+        return 0
+    records = store.all_for(dataset)
+    print(f"Triage store: {store.path if store.persistent else 'in memory (sqlite3 unavailable)'}")
+    for alert in alerts:
+        record = store.get(dataset, alert)
+        if record:
+            print(f"{alert.alert_id}  {record.status:<30}  {record.updated_at}  {record.notes}")
+    print(f"{len(records)} of {len(alerts)} alert(s) triaged; the others are New.")
     return 0
 
 
@@ -199,6 +243,15 @@ def build_parser() -> argparse.ArgumentParser:
     conv.add_argument("--output", help="Default: <input name>_converted.csv next to the input.")
     _format_arguments(conv)
     conv.set_defaults(handler=_cmd_convert)
+
+    tri = sub.add_parser("triage", help="Show or set the stored triage status and notes of alerts.")
+    tri.add_argument("--input", default=str(DEFAULT_LOG_PATH))
+    tri.add_argument("--config", default=str(DEFAULT_CONFIG_PATH))
+    _format_arguments(tri)
+    tri.add_argument("--alert-id", help="Alert to update; without it, every triaged alert is listed.")
+    tri.add_argument("--status", choices=INCIDENT_STATUSES)
+    tri.add_argument("--notes", help="Replaces the alert's notes.")
+    tri.set_defaults(handler=_cmd_triage)
 
     export = sub.add_parser("export-rules", help="Export the detection rules as Sigma, Splunk SPL and Sentinel KQL.")
     export.add_argument("--format", choices=["all", *FORMATS], default="all")

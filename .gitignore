@@ -4,6 +4,7 @@ __pycache__/
 .pytest_cache/
 reports/
 rules_export/
+case_store/
 notas_de_estudo/
 .streamlit/secrets.toml
 training_answers/

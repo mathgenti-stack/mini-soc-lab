@@ -246,3 +246,21 @@ def test_dataframes_sent_to_the_browser_contain_only_plain_strings(app, monkeypa
             app.toggle(key="training_mode").set_value(False).run()
     assert not app.exception
     assert sorted(set(offenders)) == []
+
+
+def test_language_comes_from_and_goes_to_the_link(app):
+    app.query_params["lang"] = "pt-BR"
+    app.run()
+    assert not app.exception
+    assert app.segmented_control(key="lang").value == "pt-BR"
+    assert app.tabs[0].label == "Visão geral"
+    _switch(app, "en")
+    assert app.query_params["lang"] == ["en"] or app.query_params["lang"] == "en"
+    assert app.tabs[0].label == "Overview"
+
+
+def test_unknown_language_in_the_link_falls_back_to_english(app):
+    app.query_params["lang"] = "xx"
+    app.run()
+    assert app.segmented_control(key="lang").value == "en"
+    assert app.query_params["lang"] in ("en", ["en"])

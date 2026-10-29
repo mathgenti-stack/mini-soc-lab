@@ -24,6 +24,7 @@
 | `metrics.py` / `filters.py` | KPIs, timeline, filtering | models |
 | `reporting.py` | Context checks, conclusion, Markdown/CSV export | context, playbooks |
 | `correlation.py` | Groups related alerts into cases | models |
+| `case_store.py` | SQLite store for triage status, notes and change history | models |
 | `enrichment.py` | Offline geolocation, ASN and threat-intelligence lookups | data/enrichment files |
 | `cli.py` | Command-line entry point | all of the above |
 | `streamlit_app.py` | Dashboard UI | all of the above |

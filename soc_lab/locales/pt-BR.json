@@ -607,5 +607,12 @@
   "conversion.skip.invalid_record": "Registro não pôde ser lido",
   "conversion.error.encoding": "o arquivo não é texto UTF-8 nem UTF-16 ({detail}).",
   "conversion.error.xml": "XML inválido ({detail}).",
-  "conversion.error.json": "JSON inválido ({detail})."
+  "conversion.error.json": "JSON inválido ({detail}).",
+  "ui.store.saved": "O status de triagem e as notas ficam salvos num banco SQLite local ({path}).",
+  "ui.store.memory": "O status de triagem e as notas ficam guardados só nesta sessão (aqui não há banco gravável, por exemplo na versão que roda no navegador).",
+  "ui.store.export": "Exportar status e notas de triagem (CSV)",
+  "ui.store.last_saved": "Salvo em {time}",
+  "ui.store.history": "Histórico de mudanças ({count})",
+  "ui.store.changed_at": "Alterado em (UTC)",
+  "ui.store.notes": "Notas"
 }
