@@ -4,6 +4,7 @@ import json
 import pickle
 import re
 import string
+import warnings
 from pathlib import Path
 
 import pytest
@@ -210,3 +211,38 @@ def test_every_data_source_and_mode_renders_in_every_language(app, lang):
     app.radio(key="data_source").set_value("upload").run()
     assert not app.exception
     assert app.info[0].value == t("ui.source.upload_prompt", lang)
+
+
+@pytest.mark.parametrize("lang", list(LANGUAGES))
+def test_dataframes_sent_to_the_browser_contain_only_plain_strings(app, monkeypatch, lang):
+    """The in-browser build serialises tables with fastparquet, which rejects str subclasses such as Msg."""
+    import pandas as pd
+    from streamlit import dataframe_util
+
+    offenders = []
+
+    def strict(original):
+        def check(data, *args, **kwargs):
+            if isinstance(data, pd.DataFrame):
+                for column in data.columns:
+                    offenders.extend(f"{column}: {type(v).__name__}" for v in data[column]
+                                     if isinstance(v, str) and type(v) is not str)
+            return original(data, *args, **kwargs)
+        return check
+
+    for name in ("convert_pandas_df_to_arrow_bytes", "convert_anything_to_arrow_bytes"):
+        monkeypatch.setattr(dataframe_util, name, strict(getattr(dataframe_util, name)))
+    # pandas 3 would silently turn str subclasses into its own string dtype; the browser build keeps
+    # object columns, so string inference is switched off to reproduce what fastparquet receives there.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        if "infer_string" not in dir(pd.options.future):  # removed in pandas 4
+            pytest.skip("this pandas version cannot keep object string columns")
+        with pd.option_context("future.infer_string", False):
+            app.run()
+            _switch(app, lang)
+            alert_selector = next(s for s in app.selectbox if s.label.startswith(t("ui.inv.select_alert", lang)))
+            alert_selector.set_value("ALR-0010").run()
+            app.toggle(key="training_mode").set_value(False).run()
+    assert not app.exception
+    assert sorted(set(offenders)) == []

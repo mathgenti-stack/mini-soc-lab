@@ -28,7 +28,7 @@ It is a learning and portfolio project built to practise first-line (Tier 1) SOC
 | **Languages** | The whole interface - menus, alerts, playbooks, training questions, feedback and the Markdown report - is available in English (default) and Brazilian Portuguese, switched from the sidebar without losing answers or progress. Texts live in `soc_lab/locales/*.json`; log data, IDs and CSV exports are never translated. |
 | **Training mode** | Practise triage before seeing the answer: 15 questions in five stages (understand, collect facts, add context, decide, communicate). The tool's analysis stays hidden until the analyst reveals it; each answer is then shown next to a reference and the ground-truth scenario. Answers are saved locally in `training_answers/` and included in the exported report. |
 | **CLI** | `generate`, `analyse` and `report` commands for working without the dashboard. |
-| **Tests** | 130 pytest tests covering rules, thresholds, validation, metrics, filters, reporting, training mode, translations, the CLI and dashboard tests. |
+| **Tests** | 132 pytest tests covering rules, thresholds, validation, metrics, filters, reporting, training mode, translations, the CLI and dashboard tests. |
 
 ## Technology stack
 
@@ -129,7 +129,7 @@ python -m soc_lab.cli report --all
 python -m pytest
 ```
 
-Expected result: `130 passed`. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
+Expected result: `132 passed`. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
 
 ## Sample detection scenarios
 

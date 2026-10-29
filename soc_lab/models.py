@@ -114,13 +114,17 @@ class Alert:
         return f"{self.rule_id}:{self.pattern}" if self.pattern else self.rule_id
 
     def to_record(self) -> dict:
-        """Flatten the alert into a dict suitable for a DataFrame or CSV row."""
+        """Flatten the alert into a dict suitable for a DataFrame or CSV row.
+
+        Texts are converted to plain `str` (the English wording): translatable Msg objects are a
+        str subclass, which some DataFrame serialisers (fastparquet, used by the in-browser build) reject.
+        """
         return {
             "alert_id": self.alert_id,
             "severity": self.severity.value,
             "rule_id": self.rule_id,
-            "rule_name": self.rule_name,
-            "title": self.title,
+            "rule_name": str(self.rule_name),
+            "title": str(self.title),
             "entity_type": self.entity_type,
             "entity": self.entity,
             "first_seen": self.first_seen,
@@ -130,7 +134,7 @@ class Alert:
             "source_ips": ", ".join(self.source_ips),
             "hostnames": ", ".join(self.hostnames),
             "mitre_attack": self.mitre_attack,
-            "trigger_reason": self.trigger_reason,
+            "trigger_reason": str(self.trigger_reason),
         }
 
 
