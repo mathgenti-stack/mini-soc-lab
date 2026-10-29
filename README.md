@@ -21,6 +21,7 @@ It is a learning and portfolio project built to practise first-line (Tier 1) SOC
 | Area | What it does |
 | --- | --- |
 | **Log generator** | 14 days of activity for 20 fictional staff plus service and scanner accounts, with planted scenarios and a separate ground-truth file. Reproducible with a seed. |
+| **Real log formats** | Reads Linux `auth.log`, Windows Security events exported as XML and Entra ID sign-in JSON, converts them to the lab schema and runs the same rules. Fictional example files for each format are included. See [docs/real_log_formats.md](docs/real_log_formats.md). |
 | **Validation** | Rejects invalid timestamps, incomplete records, unknown event types and conflicting duplicate IDs; removes exact duplicates; reports all of it. |
 | **Detection engine** | Five rules (R001-R005) with thresholds in `config/detection_rules.json`. Each alert records trigger criteria, severity rationale, supporting event IDs, facts, hypotheses and a possible MITRE ATT&CK mapping. |
 | **Dashboard** | KPIs, alerts by severity, a timeline of failed logons and alerts, an alert queue, a searchable event explorer, filters (date, user, IP, event type, severity), live threshold tuning, and a data-quality view. |
@@ -30,8 +31,8 @@ It is a learning and portfolio project built to practise first-line (Tier 1) SOC
 | **Rule export** | Detection as code: the same rules exported as **Sigma**, **Splunk SPL** and **Microsoft Sentinel KQL**, built from the current thresholds. Available in the dashboard (with downloads) and from the CLI. See [docs/rule_export.md](docs/rule_export.md). |
 | **Languages** | The whole interface - menus, alerts, playbooks, training questions, feedback and the Markdown report - is available in English (default) and Brazilian Portuguese, switched from the sidebar without losing answers or progress. Texts live in `soc_lab/locales/*.json`; log data, IDs and CSV exports are never translated. |
 | **Training mode** | Practise triage before seeing the answer: 15 questions in five stages (understand, collect facts, add context, decide, communicate). The tool's analysis stays hidden until the analyst reveals it; each answer is then shown next to a reference and the ground-truth scenario. Answers are saved locally in `training_answers/` and included in the exported report. |
-| **CLI** | `generate`, `analyse`, `report`, `export-rules` and `lookup-ip` commands for working without the dashboard. |
-| **Tests** | 181 pytest tests covering rules, thresholds, validation, metrics, filters, reporting, training mode, translations, rule export, case correlation, IP enrichment, the CLI and dashboard tests. |
+| **CLI** | `generate`, `analyse`, `report`, `convert`, `export-rules` and `lookup-ip` commands for working without the dashboard. |
+| **Tests** | 200 pytest tests covering rules, thresholds, validation, real log formats, metrics, filters, reporting, training mode, translations, rule export, case correlation, IP enrichment, the CLI and dashboard tests. |
 
 ## Technology stack
 
@@ -59,10 +60,12 @@ mini-soc-lab/
 ├── streamlit_app.py           Dashboard (UI only - logic lives in soc_lab/)
 ├── config/detection_rules.json  Detection thresholds and environment settings
 ├── data/                      Sample synthetic dataset + ground-truth labels
-│   └── enrichment/            Fictional GeoIP / ASN and threat-intelligence files
+│   ├── enrichment/            Fictional GeoIP / ASN and threat-intelligence files
+│   └── examples/              Fictional auth.log, Windows XML and Entra ID JSON files
 ├── soc_lab/
 │   ├── log_generator.py       Synthetic event and scenario generator
 │   ├── log_loader.py          CSV loading and validation
+│   ├── parsers.py             Linux auth.log / Windows XML / Entra ID JSON to the lab schema
 │   ├── config.py              Configuration loading and validation
 │   ├── detection/
 │   │   ├── context.py         Internal networks, business hours, service accounts
@@ -122,6 +125,10 @@ Open http://localhost:8501. The sidebar lets you choose the bundled sample datas
 # Generate a fresh dataset (overwrites data/sample_auth_logs.csv)
 python -m soc_lab.cli generate --days 14 --seed 42
 
+# Convert a real-format log to the lab CSV (analyse and report also accept these files directly)
+python -m soc_lab.cli convert --input data/examples/linux_auth.log --year 2026
+python -m soc_lab.cli analyse --input data/examples/entra_signins.json
+
 # Validate and analyse (alerts and cases); optionally export them
 python -m soc_lab.cli analyse --export-csv reports/alerts.csv --export-cases-csv reports/cases.csv
 
@@ -142,7 +149,7 @@ python -m soc_lab.cli lookup-ip 203.0.113.88 203.0.113.120
 python -m pytest
 ```
 
-Expected result: `181 passed`. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
+Expected result: `200 passed`. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
 
 ## Sample detection scenarios
 
@@ -171,7 +178,7 @@ The ground-truth file (`data/sample_auth_logs_ground_truth.csv`) exists for lear
 
 ## Limitations
 
-- Synthetic data only, with one log source (authentication). There is no endpoint, email, proxy or EDR telemetry.
+- Synthetic and example data only, with one kind of log (authentication). Real formats can be read, but there is no endpoint, email, proxy or EDR telemetry.
 - Enrichment (geolocation, ASN, threat intelligence) uses small offline, fictional files, not real feeds.
 - Business hours are in UTC, so UK daylight saving time is not modelled.
 - Rules are threshold-based. They can be evaded by slow or distributed activity, and the thresholds need tuning per environment.
@@ -181,7 +188,7 @@ More detail: [docs/limitations_and_false_positives.md](docs/limitations_and_fals
 
 ## Future improvements
 
-- Ingest real-format logs (Windows Security EVTX exports, Linux `auth.log`, Entra ID sign-in logs) through parsers.
+- Read binary Windows `.evtx` files directly (today they must be exported to XML first).
 - Persist case status and notes in SQLite.
 - Per-user behavioural baselines that go beyond "seen before".
 
@@ -198,6 +205,7 @@ More detail: [docs/limitations_and_false_positives.md](docs/limitations_and_fals
 | --- | --- |
 | [docs/architecture.md](docs/architecture.md) | Components, data flow, design decisions |
 | [docs/log_format.md](docs/log_format.md) | Log schema, field values, validation rules, how to generate data |
+| [docs/real_log_formats.md](docs/real_log_formats.md) | Linux auth.log, Windows XML and Entra ID JSON: mapping, skipped records, examples |
 | [docs/detection_rules.md](docs/detection_rules.md) | Every rule: criteria, parameters, severity logic, limitations |
 | [docs/limitations_and_false_positives.md](docs/limitations_and_false_positives.md) | Known gaps and false-positive handling |
 | [docs/dashboard_guide.md](docs/dashboard_guide.md) | Dashboard walkthrough and example uses |

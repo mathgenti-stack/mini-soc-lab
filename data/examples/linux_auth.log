@@ -1,0 +1,45 @@
+Oct 20 07:58:01 LON-WEB-01 CRON[2101]: pam_unix(cron:session): session opened for user root(uid=0) by (uid=0)
+Oct 20 08:02:10 LON-WEB-01 sshd[2102]: Accepted publickey for deploy from 10.10.2.5 port 50122 ssh2: ED25519 SHA256:Zm9vYmFyZXhhbXBsZWtleQ
+Oct 20 08:02:10 LON-WEB-01 sshd[2103]: pam_unix(sshd:session): session opened for user deploy(uid=1001) by (uid=0)
+Oct 20 08:31:44 LON-WEB-01 sshd[2104]: pam_unix(sshd:session): session closed for user deploy
+Oct 20 13:05:00 LON-WEB-01 sshd[2105]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=203.0.113.45  user=root
+Oct 20 13:05:00 LON-WEB-01 sshd[2106]: Failed password for root from 203.0.113.45 port 40100 ssh2
+Oct 20 13:05:14 LON-WEB-01 sshd[2107]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=203.0.113.45  user=root
+Oct 20 13:05:14 LON-WEB-01 sshd[2108]: Failed password for root from 203.0.113.45 port 40107 ssh2
+Oct 20 13:05:28 LON-WEB-01 sshd[2109]: Invalid user admin from 203.0.113.45 port 40114
+Oct 20 13:05:28 LON-WEB-01 sshd[2110]: Failed password for invalid user admin from 203.0.113.45 port 40114 ssh2
+Oct 20 13:05:42 LON-WEB-01 sshd[2111]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=203.0.113.45  user=root
+Oct 20 13:05:42 LON-WEB-01 sshd[2112]: Failed password for root from 203.0.113.45 port 40121 ssh2
+Oct 20 13:05:56 LON-WEB-01 sshd[2113]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=203.0.113.45  user=root
+Oct 20 13:05:56 LON-WEB-01 sshd[2114]: Failed password for root from 203.0.113.45 port 40128 ssh2
+Oct 20 13:06:10 LON-WEB-01 sshd[2115]: Invalid user test from 203.0.113.45 port 40135
+Oct 20 13:06:10 LON-WEB-01 sshd[2116]: Failed password for invalid user test from 203.0.113.45 port 40135 ssh2
+Oct 20 13:06:24 LON-WEB-01 sshd[2117]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=203.0.113.45  user=root
+Oct 20 13:06:24 LON-WEB-01 sshd[2118]: Failed password for root from 203.0.113.45 port 40142 ssh2
+Oct 20 13:06:38 LON-WEB-01 sshd[2119]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=203.0.113.45  user=root
+Oct 20 13:06:38 LON-WEB-01 sshd[2120]: Failed password for root from 203.0.113.45 port 40149 ssh2
+Oct 20 13:06:52 LON-WEB-01 sshd[2121]: Invalid user oracle from 203.0.113.45 port 40156
+Oct 20 13:06:52 LON-WEB-01 sshd[2122]: Failed password for invalid user oracle from 203.0.113.45 port 40156 ssh2
+Oct 20 13:07:06 LON-WEB-01 sshd[2123]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=203.0.113.45  user=root
+Oct 20 13:07:06 LON-WEB-01 sshd[2124]: Failed password for root from 203.0.113.45 port 40163 ssh2
+Oct 20 13:07:20 LON-WEB-01 sshd[2125]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=203.0.113.45  user=root
+Oct 20 13:07:20 LON-WEB-01 sshd[2126]: Failed password for root from 203.0.113.45 port 40170 ssh2
+Oct 20 13:07:34 LON-WEB-01 sshd[2127]: Invalid user ubuntu from 203.0.113.45 port 40177
+Oct 20 13:07:34 LON-WEB-01 sshd[2128]: Failed password for invalid user ubuntu from 203.0.113.45 port 40177 ssh2
+Oct 20 13:07:48 LON-WEB-01 sshd[2129]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=203.0.113.45  user=root
+Oct 20 13:07:48 LON-WEB-01 sshd[2130]: Failed password for root from 203.0.113.45 port 40184 ssh2
+Oct 20 13:08:02 LON-WEB-01 sshd[2131]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=203.0.113.45  user=root
+Oct 20 13:08:02 LON-WEB-01 sshd[2132]: Failed password for root from 203.0.113.45 port 40191 ssh2
+Oct 20 13:08:16 LON-WEB-01 sshd[2133]: Invalid user postgres from 203.0.113.45 port 40198
+Oct 20 13:08:16 LON-WEB-01 sshd[2134]: Failed password for invalid user postgres from 203.0.113.45 port 40198 ssh2
+Oct 20 13:08:30 LON-WEB-01 sshd[2135]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=203.0.113.45  user=root
+Oct 20 13:08:30 LON-WEB-01 sshd[2136]: Failed password for root from 203.0.113.45 port 40205 ssh2
+Oct 20 13:09:00 LON-WEB-01 sshd[2137]: Connection closed by authenticating user root 203.0.113.45 port 40200 [preauth]
+Oct 20 13:09:05 LON-WEB-01 sshd[2138]: pam_faillock(sshd:auth): Consecutive login failures for user root account temporarily locked
+Oct 20 18:40:00 LON-WEB-01 sshd[2139]: Failed password for m.jones from 198.51.100.23 port 51000 ssh2
+Oct 20 18:40:20 LON-WEB-01 sshd[2140]: Failed password for m.jones from 198.51.100.23 port 51001 ssh2
+Oct 20 18:40:40 LON-WEB-01 sshd[2141]: Failed password for m.jones from 198.51.100.23 port 51002 ssh2
+Oct 20 18:41:30 LON-WEB-01 sshd[2142]: Accepted password for m.jones from 198.51.100.23 port 51004 ssh2
+Oct 20 18:42:00 LON-WEB-01 sudo[2143]: m.jones : TTY=pts/0 ; PWD=/home/m.jones ; USER=root ; COMMAND=/usr/bin/apt update
+Oct 20 18:45:00 LON-WEB-01 passwd[2144]: pam_unix(passwd:chauthtok): password changed for m.jones
+Oct 20 19:00:00 LON-WEB-01 sshd[2145]: pam_unix(sshd:session): session closed for user m.jones

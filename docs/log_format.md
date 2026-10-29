@@ -1,6 +1,6 @@
 # Log format
 
-Authentication events are stored as CSV (UTF-8, header row required).
+Authentication events are stored as CSV (UTF-8, header row required). Linux `auth.log`, Windows Security XML and Entra ID sign-in JSON are converted to this schema first: see [real_log_formats.md](real_log_formats.md).
 
 | Field | Required | Description | Example |
 | --- | --- | --- | --- |

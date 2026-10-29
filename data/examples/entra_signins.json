@@ -1,0 +1,261 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#auditLogs/signIns",
+  "value": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "createdDateTime": "2026-10-22T08:05:00Z",
+      "userPrincipalName": "a.patel@example.com",
+      "appDisplayName": "Office 365 Exchange Online",
+      "clientAppUsed": "Browser",
+      "ipAddress": "198.51.100.62",
+      "status": {
+        "errorCode": 0,
+        "failureReason": null
+      },
+      "location": {
+        "city": "London",
+        "countryOrRegion": "GB"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "createdDateTime": "2026-10-22T08:12:00Z",
+      "userPrincipalName": "j.smith@example.com",
+      "appDisplayName": "Office 365 Exchange Online",
+      "clientAppUsed": "Browser",
+      "ipAddress": "198.51.100.41",
+      "status": {
+        "errorCode": 0,
+        "failureReason": null
+      },
+      "location": {
+        "city": "London",
+        "countryOrRegion": "GB"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "createdDateTime": "2026-10-22T08:19:00Z",
+      "userPrincipalName": "s.ahmed@example.com",
+      "appDisplayName": "Office 365 Exchange Online",
+      "clientAppUsed": "Browser",
+      "ipAddress": "198.51.100.23",
+      "status": {
+        "errorCode": 0,
+        "failureReason": null
+      },
+      "location": {
+        "city": "London",
+        "countryOrRegion": "GB"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000004",
+      "createdDateTime": "2026-10-22T08:26:00Z",
+      "userPrincipalName": "k.obrien@example.com",
+      "appDisplayName": "Office 365 Exchange Online",
+      "clientAppUsed": "Browser",
+      "ipAddress": "198.51.100.57",
+      "status": {
+        "errorCode": 0,
+        "failureReason": null
+      },
+      "location": {
+        "city": "London",
+        "countryOrRegion": "GB"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000005",
+      "createdDateTime": "2026-10-22T08:40:00Z",
+      "userPrincipalName": "s.ahmed@example.com",
+      "appDisplayName": "Office 365 Exchange Online",
+      "clientAppUsed": "Browser",
+      "ipAddress": "198.51.100.23",
+      "status": {
+        "errorCode": 50074,
+        "failureReason": "Strong Authentication is required."
+      },
+      "location": {
+        "city": "London",
+        "countryOrRegion": "GB"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "createdDateTime": "2026-10-22T11:01:00Z",
+      "userPrincipalName": "a.patel@example.com",
+      "appDisplayName": "Azure Portal",
+      "clientAppUsed": "Mobile Apps and Desktop clients",
+      "ipAddress": "203.0.113.88",
+      "status": {
+        "errorCode": 50126,
+        "failureReason": "Error validating credentials due to invalid username or password."
+      },
+      "location": {
+        "city": "Bucharest",
+        "countryOrRegion": "RO"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000007",
+      "createdDateTime": "2026-10-22T11:01:40Z",
+      "userPrincipalName": "j.smith@example.com",
+      "appDisplayName": "Azure Portal",
+      "clientAppUsed": "Mobile Apps and Desktop clients",
+      "ipAddress": "203.0.113.88",
+      "status": {
+        "errorCode": 50126,
+        "failureReason": "Error validating credentials due to invalid username or password."
+      },
+      "location": {
+        "city": "Bucharest",
+        "countryOrRegion": "RO"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000008",
+      "createdDateTime": "2026-10-22T11:02:20Z",
+      "userPrincipalName": "m.jones@example.com",
+      "appDisplayName": "Azure Portal",
+      "clientAppUsed": "Mobile Apps and Desktop clients",
+      "ipAddress": "203.0.113.88",
+      "status": {
+        "errorCode": 50126,
+        "failureReason": "Error validating credentials due to invalid username or password."
+      },
+      "location": {
+        "city": "Bucharest",
+        "countryOrRegion": "RO"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000009",
+      "createdDateTime": "2026-10-22T11:03:00Z",
+      "userPrincipalName": "r.khan@example.com",
+      "appDisplayName": "Azure Portal",
+      "clientAppUsed": "Mobile Apps and Desktop clients",
+      "ipAddress": "203.0.113.88",
+      "status": {
+        "errorCode": 50126,
+        "failureReason": "Error validating credentials due to invalid username or password."
+      },
+      "location": {
+        "city": "Bucharest",
+        "countryOrRegion": "RO"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000010",
+      "createdDateTime": "2026-10-22T11:03:40Z",
+      "userPrincipalName": "c.evans@example.com",
+      "appDisplayName": "Azure Portal",
+      "clientAppUsed": "Mobile Apps and Desktop clients",
+      "ipAddress": "203.0.113.88",
+      "status": {
+        "errorCode": 50126,
+        "failureReason": "Error validating credentials due to invalid username or password."
+      },
+      "location": {
+        "city": "Bucharest",
+        "countryOrRegion": "RO"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000011",
+      "createdDateTime": "2026-10-22T11:04:20Z",
+      "userPrincipalName": "l.taylor@example.com",
+      "appDisplayName": "Azure Portal",
+      "clientAppUsed": "Mobile Apps and Desktop clients",
+      "ipAddress": "203.0.113.88",
+      "status": {
+        "errorCode": 50126,
+        "failureReason": "Error validating credentials due to invalid username or password."
+      },
+      "location": {
+        "city": "Bucharest",
+        "countryOrRegion": "RO"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000012",
+      "createdDateTime": "2026-10-22T11:05:00Z",
+      "userPrincipalName": "admin@example.com",
+      "appDisplayName": "Azure Portal",
+      "clientAppUsed": "Mobile Apps and Desktop clients",
+      "ipAddress": "203.0.113.88",
+      "status": {
+        "errorCode": 50034,
+        "failureReason": "The user account does not exist in the directory."
+      },
+      "location": {
+        "city": "Bucharest",
+        "countryOrRegion": "RO"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000013",
+      "createdDateTime": "2026-10-22T11:05:40Z",
+      "userPrincipalName": "f.hall@example.com",
+      "appDisplayName": "Azure Portal",
+      "clientAppUsed": "Mobile Apps and Desktop clients",
+      "ipAddress": "203.0.113.88",
+      "status": {
+        "errorCode": 50126,
+        "failureReason": "Error validating credentials due to invalid username or password."
+      },
+      "location": {
+        "city": "Bucharest",
+        "countryOrRegion": "RO"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000014",
+      "createdDateTime": "2026-10-22T11:13:05Z",
+      "userPrincipalName": "l.taylor@example.com",
+      "appDisplayName": "Azure Portal",
+      "clientAppUsed": "Mobile Apps and Desktop clients",
+      "ipAddress": "203.0.113.88",
+      "status": {
+        "errorCode": 0,
+        "failureReason": null
+      },
+      "location": {
+        "city": "Bucharest",
+        "countryOrRegion": "RO"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000015",
+      "createdDateTime": "2026-10-22T14:20:00Z",
+      "userPrincipalName": "k.obrien@example.com",
+      "appDisplayName": "Office 365 Exchange Online",
+      "clientAppUsed": "Browser",
+      "ipAddress": "198.51.100.57",
+      "status": {
+        "errorCode": 50053,
+        "failureReason": "Account is locked because user tried to sign in too many times with an incorrect user ID or password."
+      },
+      "location": {
+        "city": "London",
+        "countryOrRegion": "GB"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000016",
+      "createdDateTime": "2026-10-22T15:00:00Z",
+      "userPrincipalName": "z.ali@example.com",
+      "appDisplayName": "Office 365 Exchange Online",
+      "clientAppUsed": "Browser",
+      "ipAddress": "198.51.100.62",
+      "status": {
+        "errorCode": 0,
+        "failureReason": null
+      },
+      "location": {
+        "city": "London",
+        "countryOrRegion": "GB"
+      }
+    }
+  ]
+}

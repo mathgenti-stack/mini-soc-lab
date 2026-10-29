@@ -15,6 +15,7 @@
 | `config.py` | Load and validate JSON configuration; apply overrides | - |
 | `log_generator.py` | Synthetic events, planted scenarios, ground truth | models |
 | `log_loader.py` | Read CSV, validate, data-quality report | models |
+| `parsers.py` | Convert Linux auth.log, Windows XML and Entra ID JSON to the lab schema | models |
 | `detection/context.py` | Internal networks, business hours, service-account naming | config values |
 | `detection/rules.py` | R001-R005 logic and alert wording | models, context |
 | `detection/playbooks.py` | Benign explanations, FP notes, steps, containment, limitations | - |

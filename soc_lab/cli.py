@@ -1,7 +1,8 @@
 """Command-line interface.
 
     python -m soc_lab.cli generate [--output data/sample_auth_logs.csv] [--days 14] [--seed 42]
-    python -m soc_lab.cli analyse  [--input data/sample_auth_logs.csv] [--export-csv reports/alerts.csv]
+    python -m soc_lab.cli analyse  [--input data/sample_auth_logs.csv] [--format auto] [--export-csv reports/alerts.csv]
+    python -m soc_lab.cli convert  --input data/examples/linux_auth.log [--year 2026] [--output converted.csv]
     python -m soc_lab.cli report   --alert-id ALR-0010 | --all  [--output-dir reports]
     python -m soc_lab.cli export-rules [--format all|sigma|spl|kql] [--output-dir rules_export]
     python -m soc_lab.cli lookup-ip 203.0.113.88 [more addresses]
@@ -21,6 +22,7 @@ from .detection.export import FORMATS, export_rules
 from .enrichment import enrichment_findings, load_enrichment
 from .log_generator import GeneratorSettings, generate_events, write_dataset
 from .log_loader import LogFileError, load_events
+from .parsers import FORMATS as LOG_FORMATS, ConversionError, convert
 from .metrics import compute_kpis
 from .reporting import alerts_to_csv, build_investigation_report, save_report
 
@@ -40,8 +42,43 @@ def _cmd_generate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _load(args: argparse.Namespace):
+    """Load a lab CSV directly, or convert a real-world log format first."""
+    path = Path(args.input)
+    if args.format == "lab_csv" or not path.is_file():
+        return load_events(args.input)  # load_events reports missing files and directories
+    conversion = convert(path.read_bytes(), args.format, path.name, args.year)
+    if conversion.fmt == "lab_csv":
+        return load_events(args.input)
+    _print_conversion(conversion)
+    return load_events(conversion.to_csv_bytes(), str(path))
+
+
+def _print_conversion(conversion) -> None:
+    print(f"Converted from {conversion.fmt}: {conversion.records_read} records read, "
+          f"{len(conversion.events)} events, {conversion.records_skipped} skipped")
+    for reason, count in conversion.skipped.most_common():
+        print(f"  skipped {count:>4}  {reason}")
+
+
+def _cmd_convert(args: argparse.Namespace) -> int:
+    path = Path(args.input)
+    if not path.is_file():
+        raise LogFileError(f"Log file not found: {path}")
+    conversion = convert(path.read_bytes(), args.format, path.name, args.year)
+    if conversion.fmt == "lab_csv":
+        print("The file is already a lab CSV; nothing to convert.")
+        return 0
+    _print_conversion(conversion)
+    output = Path(args.output or path.with_name(f"{path.stem}_converted.csv"))
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(conversion.to_csv_bytes())
+    print(f"Lab CSV written to {output}")
+    return 0
+
+
 def _analyse(args: argparse.Namespace):
-    result = load_events(args.input)
+    result = _load(args)
     config = load_config(args.config)
     alerts = run_detection(result.events, config)
     return result, config, alerts
@@ -144,6 +181,7 @@ def build_parser() -> argparse.ArgumentParser:
         cmd = sub.add_parser(name, help=help_text)
         cmd.add_argument("--input", default=str(DEFAULT_LOG_PATH))
         cmd.add_argument("--config", default=str(DEFAULT_CONFIG_PATH))
+        _format_arguments(cmd)
         cmd.set_defaults(handler=handler)
         if name == "analyse":
             cmd.add_argument("--export-csv", help="Also write the alert list to this CSV file.")
@@ -155,6 +193,12 @@ def build_parser() -> argparse.ArgumentParser:
             cmd.add_argument("--output-dir", default=str(DEFAULT_REPORT_DIR))
             cmd.add_argument("--no-enrichment", action="store_true",
                              help="Do not add the offline IP enrichment (geolocation, ASN, threat intelligence).")
+
+    conv = sub.add_parser("convert", help="Convert Linux auth.log, Windows XML or Entra ID JSON to a lab CSV.")
+    conv.add_argument("--input", required=True)
+    conv.add_argument("--output", help="Default: <input name>_converted.csv next to the input.")
+    _format_arguments(conv)
+    conv.set_defaults(handler=_cmd_convert)
 
     export = sub.add_parser("export-rules", help="Export the detection rules as Sigma, Splunk SPL and Sentinel KQL.")
     export.add_argument("--format", choices=["all", *FORMATS], default="all")
@@ -169,11 +213,18 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _format_arguments(cmd: argparse.ArgumentParser) -> None:
+    cmd.add_argument("--format", choices=["auto", *LOG_FORMATS], default="auto",
+                     help="Input format (default: detect from the file name and contents).")
+    cmd.add_argument("--year", type=int, default=None,
+                     help="Year for classic syslog lines in auth.log, which have none (default: current year).")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return args.handler(args)
-    except (LogFileError, ConfigError, ValueError) as exc:
+    except (LogFileError, ConfigError, ConversionError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 from dataclasses import replace
 from pathlib import Path
 
@@ -21,6 +22,7 @@ from soc_lab import training
 from soc_lab.i18n import DEFAULT_LANGUAGE, LANGUAGES, t, tr
 from soc_lab.log_generator import GeneratorSettings, generate_csv_text, generate_events
 from soc_lab.log_loader import LogFileError, load_events, rejection_reason_msg
+from soc_lab.parsers import FORMATS as LOG_FORMATS, ConversionError, convert
 from soc_lab.metrics import alerts_to_frame, compute_kpis, logon_timeline, top_failure_sources
 from soc_lab.models import INCIDENT_STATUSES, SEVERITY_ORDER, format_timestamp
 from soc_lab.reporting import alerts_to_csv, build_investigation_report, evidence_to_csv, render_markdown
@@ -31,7 +33,10 @@ ANSWERS_DIR = Path(os.environ.get("SOC_LAB_ANSWERS_DIR", Path(__file__).parent /
 SEVERITY_NAMES = [s.value for s in reversed(SEVERITY_ORDER)]  # Critical first
 SEVERITY_COLOURS = {"Critical": "#d03b3b", "High": "#ec835a", "Medium": "#fab219", "Low": "#2a78d6"}
 RESULT_COLOURS = {"SUCCESS": "#2a78d6", "FAILURE": "#eb6834", "INFO": "#8a8984"}
-DATA_SOURCES = ["sample", "generate", "upload"]
+DATA_SOURCES = ["sample", "generate", "examples", "upload"]
+EXAMPLES_DIR = Path(__file__).parent / "data" / "examples"
+EXAMPLE_FILES = ["linux_auth.log", "windows_security.xml", "entra_signins.json"]
+EXAMPLE_YEAR = 2026  # the classic syslog lines in linux_auth.log have no year
 TAB_IDS = ["overview", "alerts", "cases", "events", "investigation", "quality", "export", "about"]
 
 st.set_page_config(page_title="Mini SOC Lab", page_icon=":shield:", layout="wide")
@@ -71,6 +76,11 @@ def run_pipeline(csv_bytes: bytes, source_name: str, config_json: str):
     result = load_events(csv_bytes, source_name)
     alerts = run_detection(result.events, json.loads(config_json))
     return result, alerts
+
+
+@st.cache_data(show_spinner=False)
+def convert_log(data: bytes, fmt: str, filename: str, year: int):
+    return convert(data, fmt, filename, year)
 
 
 @st.cache_data(show_spinner=False)
@@ -124,14 +134,41 @@ elif source_choice == "generate":
     source_name = f"generated (seed {seed}, {days} days)"
     st.sidebar.download_button(T("ui.source.download"), csv_bytes, file_name=f"auth_logs_seed{seed}.csv",
                                mime="text/csv", key="download_generated")
+elif source_choice == "examples":
+    example = st.sidebar.selectbox(T("ui.source.example_label"), EXAMPLE_FILES, key="example_file",
+                                   format_func=lambda name: T(f"ui.source.example.{Path(name).stem}"))
+    raw_bytes, source_name, log_format, log_year = (EXAMPLES_DIR / example).read_bytes(), example, "auto", EXAMPLE_YEAR
+    ground_truth = {}
 else:
-    upload = st.sidebar.file_uploader(T("ui.source.upload_label"), type=["csv"], help=T("ui.source.upload_help"),
-                                      key="upload_csv")
+    upload = st.sidebar.file_uploader(T("ui.source.upload_label"), type=["csv", "log", "txt", "xml", "json"],
+                                      help=T("ui.source.upload_help"), key="upload_csv")
+    log_format = st.sidebar.selectbox(T("ui.source.format"), ["auto", *LOG_FORMATS], key="upload_format",
+                                      format_func=lambda fmt: T(f"ui.format.{fmt}"))
+    log_year = st.sidebar.number_input(T("ui.source.year"), 1990, 2100, datetime.now(timezone.utc).year,
+                                       help=T("ui.source.year_help"), key="syslog_year")
     if upload is None:
         st.info(T("ui.source.upload_prompt"))
         st.stop()
-    csv_bytes, source_name = upload.getvalue(), upload.name
+    raw_bytes, source_name = upload.getvalue(), upload.name
     ground_truth = {}
+
+# Real-world formats are converted to the lab schema first; the CSV then goes through the normal validation.
+conversion = None
+if source_choice in ("examples", "upload"):
+    try:
+        conversion = convert_log(raw_bytes, log_format, source_name, int(log_year))
+    except ConversionError as exc:
+        st.error(T("ui.error.conversion", detail=error_text(exc)))
+        st.stop()
+    if conversion.fmt == "lab_csv":
+        csv_bytes, conversion = raw_bytes, None
+    else:
+        csv_bytes = conversion.to_csv_bytes()
+        st.sidebar.caption(T("ui.source.converted", format=T(f"ui.format.{conversion.fmt}"),
+                             read=conversion.records_read, events=len(conversion.events),
+                             skipped=conversion.records_skipped))
+        st.sidebar.download_button(T("ui.source.download_converted"), csv_bytes, key="download_converted",
+                                   file_name=f"{Path(source_name).stem}_converted.csv", mime="text/csv")
 
 try:
     base_config = load_config(DEFAULT_CONFIG_PATH)
@@ -676,6 +713,18 @@ with tab_investigate:
 # Data quality
 # ---------------------------------------------------------------------------
 with tab_quality:
+    if conversion is not None:
+        st.markdown(f"#### {T('ui.quality.conversion', format=T(f'ui.format.{conversion.fmt}'))}")
+        c = st.columns(3)
+        c[0].metric(T("ui.quality.records_read"), conversion.records_read)
+        c[1].metric(T("ui.quality.events_converted"), len(conversion.events))
+        c[2].metric(T("ui.quality.records_skipped"), conversion.records_skipped)
+        if conversion.skipped:
+            st.dataframe(pd.DataFrame([{"reason": T(f"conversion.skip.{reason}"), "records": count}
+                                       for reason, count in conversion.skipped.most_common()]),
+                         hide_index=True, column_config={"reason": T("ui.quality.reason"),
+                                                         "records": T("ui.quality.rows")})
+        st.caption(T("ui.quality.conversion_caption"))
     q = st.columns(4)
     q[0].metric(T("ui.quality.read"), quality.rows_read)
     q[1].metric(T("ui.quality.accepted"), quality.rows_accepted)

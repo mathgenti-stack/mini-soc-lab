@@ -61,7 +61,14 @@ Open **Data Quality**. It shows 1 exact duplicate removed and 3 rows rejected: a
 3. The combined timeline shows the whole story: 8 failures, then a successful VPN logon in the evening.
 4. In the sidebar, set **Case grouping window** to 0. *CASE-0004* (`e.wilson`) splits in two, because its alerts are 15 seconds apart and do not overlap.
 
-### 7. Take a rule to a SIEM
+### 7. Analyse a real log format
+
+1. In the sidebar, choose **Real-format log examples** and *Entra ID sign-ins JSON*.
+2. The Overview shows one Critical alert: a password spray from 203.0.113.88 followed by a successful sign-in for `l.taylor@example.com`.
+3. Open **Data Quality**: 16 sign-ins were read and 1 was skipped (an MFA interruption).
+4. Use **Download converted CSV** to see the same data in the lab schema.
+
+### 8. Take a rule to a SIEM
 
 1. Open **Rule Export**, choose *R004* and *Microsoft Sentinel KQL*.
 2. In the sidebar, set **R004 distinct accounts** to 8. The query now says `let min_distinct_accounts = 8;`.
