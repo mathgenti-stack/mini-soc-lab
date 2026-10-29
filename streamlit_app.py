@@ -19,7 +19,7 @@ from soc_lab.detection import run_detection
 from soc_lab.enrichment import display_rows, load_enrichment
 from soc_lab.detection.export import CODE_LANGUAGES, FIELD_MAPPING, FORMAT_NAMES, FORMATS, export_rules, export_zip
 from soc_lab.filters import filter_alerts, filter_events
-from soc_lab import training
+from soc_lab import scoring, training
 from soc_lab.i18n import DEFAULT_LANGUAGE, LANGUAGES, t, tr
 from soc_lab.log_generator import GeneratorSettings, generate_csv_text, generate_events
 from soc_lab.log_loader import LogFileError, load_events, rejection_reason_msg
@@ -604,6 +604,19 @@ def render_exports(report) -> None:
                         "text/csv", key=f"export_evidence_{report.incident_id}")
 
 
+def training_score(alert, report, answers: dict, status: str | None):
+    scenario = training.scenario_for_alert(alert, ground_truth)
+    return scoring.score_answers(answers, alert, report, config, scenario, status)
+
+
+def render_score(card) -> None:
+    with st.container(border=True):
+        st.markdown(f"### {T('ui.score.title')}: {card.percent}%")
+        st.progress(card.percent / 100, text=T("ui.score.value", earned=card.earned, total=card.total,
+                                                 percent=card.percent))
+        st.caption(T("ui.score.caption"))
+
+
 def render_training(alert, base_report, saved: dict, token: str) -> None:
     """Questionnaire first, tool analysis and ground truth only after the analyst chooses to reveal them."""
     key = f"{token}_{alert.alert_id}"
@@ -680,6 +693,9 @@ def render_training(alert, base_report, saved: dict, token: str) -> None:
                     st.warning(T("ui.training.status_expected", status=status_label(status), expected=expected))
                 st.caption(T("ui.training.scenario", scenario=scenario))
 
+        card = training_score(alert, base_report, answers, status)
+        render_score(card)
+
         st.markdown(f"### {T('ui.training.compare')}")
         for stage in training.STAGES:
             st.markdown(f"**{stage.label(lang)}**")
@@ -692,6 +708,10 @@ def render_training(alert, base_report, saved: dict, token: str) -> None:
                     ref.markdown(f"**{T('ui.training.reference')}**")
                     points = training.reference_answers(question.id, alert, base_report, config, lang)
                     ref.markdown("\n".join(f"- {point}" for point in points) or "-")
+                    checks = card.for_question(question.id)
+                    if checks:
+                        st.markdown(f"**{T('ui.score.checklist')}**\n\n" + "\n".join(
+                            f"- {'✅' if c.passed else '❌'} {L(c.label)}" for c in checks))
 
         st.markdown(f"### {T('ui.training.full_analysis')}")
         st.markdown(f"**{T('ui.inv.mitre')}:** {alert.mitre_attack}")
@@ -715,6 +735,12 @@ with tab_investigate:
         trained = sum(1 for p in progress.values() if p["revealed"])
         if training_mode:
             st.caption(T("ui.training.cases", done=trained, total=len(view_alerts)))
+            revealed_alerts = [a for a in view_alerts if progress[a.alert_id]["revealed"]]
+            if revealed_alerts:
+                scores = [training_score(a, build_investigation_report(a, events, config, all_alerts=alerts),
+                                         progress[a.alert_id]["answers"], progress[a.alert_id]["status"]).percent
+                          for a in revealed_alerts]
+                st.caption(T("ui.score.average", count=len(scores), percent=round(sum(scores) / len(scores))))
         labels = {a.alert_id: f"{'✅ ' if training_mode and progress[a.alert_id]['revealed'] else ''}"
                               f"{a.alert_id} | {severity_label(a.severity.value)} | {L(a.title)}" for a in view_alerts}
         alert_id = st.selectbox(T("ui.inv.select_alert"), list(labels), format_func=labels.get,
