@@ -41,6 +41,14 @@ At least 5 distinct accounts failed to log on from one source address within 30 
 - Successful logon(s) from the alert's source address(es) were recorded for: l.taylor (between first activity and one hour after the last).
 - Account name(s) with no successful logon anywhere in the dataset: admin, administrator, guest, test (they may not exist in the directory).
 - Related alerts sharing an account or source address: ALR-0001, ALR-0002, ALR-0003, ALR-0005, ALR-0006, ALR-0009, ALR-0011, ALR-0012, ALR-0013.
+- Enrichment: 203.0.113.88 is registered in Bucharest, Romania (RO), AS64501 Example VPS SRL (hosting / cloud provider).
+- Threat intelligence: 203.0.113.88 matches 203.0.113.88 in 'Example Shared Blocklist' as suspicious (high confidence, category password_spraying, seen 2026-09-28 to 2026-10-11).
+
+**IP enrichment (offline, fictional data)**
+
+| IP address | Location | ASN | Organisation | Network type | Threat intelligence |
+| --- | --- | --- | --- | --- | --- |
+| 203.0.113.88 | Bucharest, Romania (RO) | AS64501 | Example VPS SRL | hosting / cloud provider | suspicious (high) - Example Shared Blocklist: password_spraying |
 
 ## 4. Hypotheses (not confirmed)
 
@@ -108,5 +116,5 @@ _No analyst notes recorded._
 - Shared addresses make it impossible to attribute activity to a single device from logs alone.
 - Analysis is limited to the authentication events in this dataset; endpoint, email, proxy and EDR telemetry were not available.
 - Source IP addresses do not identify a person. Addresses can be shared (NAT, VPN, proxies) or spoofed upstream.
-- No threat-intelligence or geolocation enrichment was performed.
 - Timestamps are treated as UTC as recorded; clock drift between log sources was not assessed.
+- Geolocation, ASN and threat intelligence come from the lab's offline, fictional files. Real geolocation is approximate, VPNs and mobile networks hide where a person is, and threat-intelligence lists are incomplete.

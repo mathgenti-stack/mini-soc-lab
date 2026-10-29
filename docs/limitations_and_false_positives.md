@@ -20,7 +20,7 @@ The dashboard's incident status list reflects these outcomes.
 | R003 + R004 for `10.10.99.5` | Authorised scanner testing default account names | Internal source; account names with no successful logon anywhere; playbook says to check the scan schedule |
 | R003 x4 for `svc_backup` / `10.10.5.20` | Backup job retrying with an expired password every 4 minutes | Service-account naming, regular intervals, `EXPIRED_PASSWORD` reason, and a later password change are all reported |
 | R005 for `d.brown` | On-call engineer at 02:31 from a hotel | Playbook advises checking the on-call rota. The conclusion stays cautious because the source is external. |
-| R005 for `s.ahmed` | Two external addresses within 7 minutes | Explicitly marked as needing user verification; no geolocation available |
+| R005 for `s.ahmed` | Two external addresses within 7 minutes | Explicitly marked as needing user verification; the offline enrichment shows both addresses registered in London (home broadband, then a mobile network) |
 
 ## Design choices that reduce false positives
 
@@ -41,7 +41,7 @@ The dashboard's incident status list reflects these outcomes.
 
 - Synthetic data. Real logs are noisier, have gaps and use different field names.
 - Single source type. No correlation with endpoint, email, proxy, firewall or identity-provider logs.
-- No enrichment. No GeoIP, ASN, threat intelligence, asset inventory or HR data such as leave or travel.
+- Limited enrichment. GeoIP, ASN and threat intelligence come from small offline, fictional files; there is no asset inventory or HR data such as leave or travel.
 - Business hours are configured in UTC, and UK daylight saving time is not modelled.
 - Daily failure-rate buckets split activity at midnight UTC.
 - Case status and notes exist only in the dashboard session. Export the report to keep them.

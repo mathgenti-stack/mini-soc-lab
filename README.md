@@ -25,12 +25,13 @@ It is a learning and portfolio project built to practise first-line (Tier 1) SOC
 | **Detection engine** | Five rules (R001-R005) with thresholds in `config/detection_rules.json`. Each alert records trigger criteria, severity rationale, supporting event IDs, facts, hypotheses and a possible MITRE ATT&CK mapping. |
 | **Dashboard** | KPIs, alerts by severity, a timeline of failed logons and alerts, an alert queue, a searchable event explorer, filters (date, user, IP, event type, severity), live threshold tuning, and a data-quality view. |
 | **Investigation** | For any alert: context checks, benign explanations, false-positive considerations, recommended steps, proposed containment, evidence timeline, evidence-based conclusion, limitations, status and analyst notes. Export to Markdown and CSV. |
+| **IP enrichment (offline)** | Geolocation, ASN and threat-intelligence lookups from local, fictional files in `data/enrichment/` - nothing is sent to the internet. Shown in investigations, reports and the Event Explorer, plus a distance check for rapid source changes. See [docs/enrichment.md](docs/enrichment.md). |
 | **Case correlation** | Related alerts (same account or source address, close in time) are grouped into cases, so one activity is triaged once. The 18 sample alerts become 9 cases, one per scenario. See [docs/correlation.md](docs/correlation.md). |
 | **Rule export** | Detection as code: the same rules exported as **Sigma**, **Splunk SPL** and **Microsoft Sentinel KQL**, built from the current thresholds. Available in the dashboard (with downloads) and from the CLI. See [docs/rule_export.md](docs/rule_export.md). |
 | **Languages** | The whole interface - menus, alerts, playbooks, training questions, feedback and the Markdown report - is available in English (default) and Brazilian Portuguese, switched from the sidebar without losing answers or progress. Texts live in `soc_lab/locales/*.json`; log data, IDs and CSV exports are never translated. |
 | **Training mode** | Practise triage before seeing the answer: 15 questions in five stages (understand, collect facts, add context, decide, communicate). The tool's analysis stays hidden until the analyst reveals it; each answer is then shown next to a reference and the ground-truth scenario. Answers are saved locally in `training_answers/` and included in the exported report. |
-| **CLI** | `generate`, `analyse`, `report` and `export-rules` commands for working without the dashboard. |
-| **Tests** | 164 pytest tests covering rules, thresholds, validation, metrics, filters, reporting, training mode, translations, rule export, case correlation, the CLI and dashboard tests. |
+| **CLI** | `generate`, `analyse`, `report`, `export-rules` and `lookup-ip` commands for working without the dashboard. |
+| **Tests** | 181 pytest tests covering rules, thresholds, validation, metrics, filters, reporting, training mode, translations, rule export, case correlation, IP enrichment, the CLI and dashboard tests. |
 
 ## Technology stack
 
@@ -58,6 +59,7 @@ mini-soc-lab/
 ├── streamlit_app.py           Dashboard (UI only - logic lives in soc_lab/)
 ├── config/detection_rules.json  Detection thresholds and environment settings
 ├── data/                      Sample synthetic dataset + ground-truth labels
+│   └── enrichment/            Fictional GeoIP / ASN and threat-intelligence files
 ├── soc_lab/
 │   ├── log_generator.py       Synthetic event and scenario generator
 │   ├── log_loader.py          CSV loading and validation
@@ -72,6 +74,7 @@ mini-soc-lab/
 │   ├── filters.py             Event and alert filtering
 │   ├── reporting.py           Investigation reports and exports
 │   ├── correlation.py         Groups related alerts into cases
+│   ├── enrichment.py          Offline IP enrichment (geolocation, ASN, threat intel)
 │   ├── training.py            Training-mode questionnaire and reference answers
 │   ├── i18n.py                Translation lookup (t() and Msg)
 │   ├── locales/               en.json, pt-BR.json - every user-facing text
@@ -128,6 +131,9 @@ python -m soc_lab.cli report --all
 
 # Export the rules as Sigma, Splunk SPL and Sentinel KQL to rules_export/
 python -m soc_lab.cli export-rules
+
+# Look addresses up in the offline enrichment files
+python -m soc_lab.cli lookup-ip 203.0.113.88 203.0.113.120
 ```
 
 ## Running tests
@@ -136,7 +142,7 @@ python -m soc_lab.cli export-rules
 python -m pytest
 ```
 
-Expected result: `164 passed`. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
+Expected result: `181 passed`. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
 
 ## Sample detection scenarios
 
@@ -166,7 +172,7 @@ The ground-truth file (`data/sample_auth_logs_ground_truth.csv`) exists for lear
 ## Limitations
 
 - Synthetic data only, with one log source (authentication). There is no endpoint, email, proxy or EDR telemetry.
-- No geolocation, ASN or threat-intelligence enrichment.
+- Enrichment (geolocation, ASN, threat intelligence) uses small offline, fictional files, not real feeds.
 - Business hours are in UTC, so UK daylight saving time is not modelled.
 - Rules are threshold-based. They can be evaded by slow or distributed activity, and the thresholds need tuning per environment.
 - Incident status and analyst notes are held in the browser session and are not persisted.
@@ -176,7 +182,6 @@ More detail: [docs/limitations_and_false_positives.md](docs/limitations_and_fals
 ## Future improvements
 
 - Ingest real-format logs (Windows Security EVTX exports, Linux `auth.log`, Entra ID sign-in logs) through parsers.
-- Add enrichment (GeoIP, ASN, threat-intelligence lookups) with offline sample data.
 - Persist case status and notes in SQLite.
 - Per-user behavioural baselines that go beyond "seen before".
 
@@ -196,6 +201,7 @@ More detail: [docs/limitations_and_false_positives.md](docs/limitations_and_fals
 | [docs/detection_rules.md](docs/detection_rules.md) | Every rule: criteria, parameters, severity logic, limitations |
 | [docs/limitations_and_false_positives.md](docs/limitations_and_false_positives.md) | Known gaps and false-positive handling |
 | [docs/dashboard_guide.md](docs/dashboard_guide.md) | Dashboard walkthrough and example uses |
+| [docs/enrichment.md](docs/enrichment.md) | Offline IP enrichment: data files, what is shown where, and its limits |
 | [docs/correlation.md](docs/correlation.md) | How alerts are grouped into cases, and the limits of that grouping |
 | [docs/rule_export.md](docs/rule_export.md) | Sigma / SPL / KQL export, field mapping, differences from the lab |
 | [docs/sample_incident_report.md](docs/sample_incident_report.md) | Example generated report |

@@ -1,0 +1,8 @@
+network,country_code,country,city,latitude,longitude,asn,as_org,network_type
+198.51.100.0/26,GB,United Kingdom,London,51.5072,-0.1276,64496,Example Home Broadband Ltd,residential
+198.51.100.128/26,GB,United Kingdom,Manchester,53.4808,-2.2426,64497,Example Hotel Wi-Fi Services,public_wifi
+203.0.113.0/26,NL,Netherlands,Amsterdam,52.3676,4.9041,64500,Example Cloud Hosting BV,hosting
+203.0.113.64/27,RO,Romania,Bucharest,44.4268,26.1025,64501,Example VPS SRL,hosting
+203.0.113.96/27,DE,Germany,Frankfurt,50.1109,8.6821,64502,Example Privacy VPN GmbH,anonymiser
+203.0.113.192/26,GB,United Kingdom,London,51.5072,-0.1276,64503,Example Mobile Telecom plc,mobile
+192.0.2.0/24,US,United States,New York,40.7128,-74.0060,64510,Example Content Delivery Inc,hosting

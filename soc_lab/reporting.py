@@ -13,6 +13,7 @@ import pandas as pd
 
 from .detection.context import DetectionContext
 from .detection.playbooks import COMMON_LIMITATIONS, Playbook, get_playbook
+from .enrichment import EnrichmentData, IpInfo, display_rows, enrichment_findings
 from .i18n import DEFAULT_LANGUAGE, Msg, t, tr
 from .metrics import alerts_to_frame
 from .models import INCIDENT_STATUSES, Alert, EventType, Result, format_timestamp
@@ -22,6 +23,8 @@ EVIDENCE_COLUMNS = ["timestamp", "event_id", "event_type", "event_code", "result
 MARKDOWN_EVIDENCE_LIMIT = 40
 FOLLOW_UP_WINDOW = pd.Timedelta(hours=1)
 PASSWORD_CHANGE_LOOKBACK = pd.Timedelta(days=7)
+# Limitations that say "no enrichment was done"; replaced when enrichment data is used.
+NO_ENRICHMENT_LIMITATIONS = {"playbook.common_limitations.3", "playbook.R005:rapid_source_change.limitations.1"}
 
 
 @dataclass
@@ -38,11 +41,13 @@ class InvestigationReport:
     limitations: list[str]
     related_alert_ids: list[str] = field(default_factory=list)
     analyst_notes: str = ""
+    ip_enrichment: list[IpInfo] = field(default_factory=list)
 
 
 def build_investigation_report(alert: Alert, events: pd.DataFrame, config: dict,
                                all_alerts: list[Alert] | None = None, status: str = "New",
-                               analyst_notes: str = "", generated_at: pd.Timestamp | None = None
+                               analyst_notes: str = "", generated_at: pd.Timestamp | None = None,
+                               enrichment: EnrichmentData | None = None
                                ) -> InvestigationReport:
     if status not in INCIDENT_STATUSES:
         raise ValueError(f"Unknown incident status: {status}")
@@ -55,6 +60,14 @@ def build_investigation_report(alert: Alert, events: pd.DataFrame, config: dict,
     if related:
         findings.append(Msg("finding.related", ids=", ".join(related)))
     playbook = get_playbook(alert.playbook_key)
+    limitations = playbook.limitations + COMMON_LIMITATIONS
+    infos: list[IpInfo] = []
+    if enrichment is not None:
+        internal = config["environment"]["internal_networks"]
+        infos = [enrichment.lookup(ip, internal) for ip in alert.source_ips]
+        findings.extend(enrichment_findings(infos, _travel(alert, evidence, infos)))
+        limitations = [item for item in limitations if getattr(item, "key", None) not in NO_ENRICHMENT_LIMITATIONS]
+        limitations.append(Msg("enrichment.limitation"))
     return InvestigationReport(
         incident_id=alert.alert_id.replace("ALR", "INC"),
         alert=alert,
@@ -65,10 +78,21 @@ def build_investigation_report(alert: Alert, events: pd.DataFrame, config: dict,
         benign_indicators=benign,
         conclusion=_conclusion(alert, ctx, benign, success_observed),
         playbook=playbook,
-        limitations=playbook.limitations + COMMON_LIMITATIONS,
+        limitations=limitations,
         related_alert_ids=related,
         analyst_notes=analyst_notes.strip(),
+        ip_enrichment=infos,
     )
+
+
+def _travel(alert: Alert, evidence: pd.DataFrame, infos: list[IpInfo]):
+    """For a rapid source change: the two addresses in time order and the minutes between them."""
+    if alert.pattern != "rapid_source_change" or len(infos) != 2:
+        return None
+    by_ip = {info.ip: info for info in infos}
+    first_ip = evidence["source_ip"].iloc[0]
+    second_ip = next(ip for ip in by_ip if ip != first_ip)
+    return by_ip[first_ip], by_ip[second_ip], (alert.last_seen - alert.first_seen).total_seconds() / 60
 
 
 def _context_checks(alert: Alert, events: pd.DataFrame, ctx: DetectionContext) -> tuple[list[str], list[str], bool]:
@@ -209,7 +233,7 @@ def render_markdown(report: InvestigationReport, lang: str = DEFAULT_LANGUAGE) -
 
 {_bullets(report.context_findings, lang)}
 
-## {label('section.hypotheses')}
+{_enrichment_table(report, lang)}## {label('section.hypotheses')}
 
 {_bullets(alert.hypotheses, lang)}
 
@@ -247,6 +271,17 @@ def render_markdown(report: InvestigationReport, lang: str = DEFAULT_LANGUAGE) -
 
 {_bullets(report.limitations, lang)}
 """
+
+
+def _enrichment_table(report: InvestigationReport, lang: str) -> str:
+    rows = display_rows(report.ip_enrichment, lang)
+    if not rows:
+        return ""
+    def label(key: str) -> str:
+        return t(f"report.enrichment.{key}", lang)
+    frame = pd.DataFrame(rows)
+    frame.columns = [label(column) for column in frame.columns]
+    return f"**{label('title')}**\n\n{_markdown_table(frame)}\n\n"
 
 
 def evidence_to_csv(report: InvestigationReport) -> str:

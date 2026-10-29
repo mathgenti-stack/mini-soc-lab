@@ -1,0 +1,5 @@
+indicator,verdict,confidence,source,category,first_seen,last_seen,description
+203.0.113.88,suspicious,high,Example Shared Blocklist,password_spraying,2026-09-28,2026-10-11,Reported by three other organisations for password spraying against email accounts.
+203.0.113.96/27,suspicious,medium,Example Anonymiser Feed,anonymising_vpn,2026-01-15,2026-10-01,Exit range of a commercial anonymising VPN service. Legitimate users also use it.
+203.0.113.120,malicious,medium,Example Botnet Tracker,credential_stuffing,2026-10-02,2026-10-12,Seen as a node of a credential-stuffing botnet.
+192.0.2.10,suspicious,low,Example Shared Blocklist,scanning,2026-08-01,2026-08-03,Brief port scanning reported once. Old and low confidence.

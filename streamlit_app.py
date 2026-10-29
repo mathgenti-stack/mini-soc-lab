@@ -14,6 +14,7 @@ import streamlit as st
 from soc_lab.config import DEFAULT_CONFIG_PATH, ConfigError, load_config, with_overrides
 from soc_lab.correlation import case_for_alert, cases_to_csv, cases_to_frame, correlate_alerts, correlation_window
 from soc_lab.detection import run_detection
+from soc_lab.enrichment import display_rows, load_enrichment
 from soc_lab.detection.export import CODE_LANGUAGES, FIELD_MAPPING, FORMAT_NAMES, FORMATS, export_rules, export_zip
 from soc_lab.filters import filter_alerts, filter_events
 from soc_lab import training
@@ -166,6 +167,12 @@ with st.sidebar.expander(T("ui.thresholds.title")):
     }
     case_window = st.number_input(T("ui.thresholds.correlation_window"), 0, 1440,
                                   int(correlation_window(base_config)), key="thr_correlation_window")
+use_enrichment = st.sidebar.toggle(T("ui.enrichment.toggle"), value=True, key="use_enrichment",
+                                   help=T("ui.enrichment.toggle_help"))
+enrichment = load_enrichment() if use_enrichment else None
+for warning in enrichment.warnings if enrichment else []:
+    st.sidebar.warning(L(warning))
+
 try:
     config = with_overrides(base_config, overrides)
 except ConfigError as exc:
@@ -395,6 +402,22 @@ with tab_cases:
         st.caption(T("ui.cases.severity_note"))
 
 # ---------------------------------------------------------------------------
+# IP enrichment tables (used by the Event Explorer and the Investigation tab)
+# ---------------------------------------------------------------------------
+ENRICHMENT_COLUMNS =["ip", "location", "asn", "as_org", "network_type", "threat_intel"]
+
+
+def render_enrichment_table(infos) -> None:
+    rows = display_rows(infos, lang)
+    if not rows:
+        st.caption(T("ui.enrichment.none"))
+        return
+    st.dataframe(pd.DataFrame(rows, columns=ENRICHMENT_COLUMNS), hide_index=True, width="stretch",
+                 column_config={column: T(f"ui.enrichment.col.{column}") for column in ENRICHMENT_COLUMNS})
+    st.caption(T("ui.enrichment.caption"))
+
+
+# ---------------------------------------------------------------------------
 # Event explorer (raw log data: column names and values are kept as recorded)
 # ---------------------------------------------------------------------------
 with tab_events:
@@ -407,6 +430,10 @@ with tab_events:
     export = shown.assign(timestamp=shown["timestamp"].dt.strftime("%Y-%m-%dT%H:%M:%SZ"))
     st.download_button(T("ui.events.export"), export.to_csv(index=False), "filtered_events.csv", "text/csv",
                        key="export_events")
+    if enrichment is not None:
+        with st.expander(T("ui.enrichment.events_title")):
+            internal = config["environment"]["internal_networks"]
+            render_enrichment_table([enrichment.lookup(ip, internal) for ip in sorted(shown["source_ip"].unique())])
 
 # ---------------------------------------------------------------------------
 # Investigation
@@ -433,6 +460,14 @@ def render_alert_summary(alert, status: str, show_mitre: bool) -> None:
     if show_mitre:
         lines.append(f"**{T('ui.inv.mitre')}:** {alert.mitre_attack}")
     st.markdown("  \n".join(lines))
+
+
+def render_enrichment(report) -> None:
+    """Lookup data for the alert's addresses: raw context, shown in training mode too (an analyst would look it up)."""
+    if enrichment is None:
+        return
+    st.markdown(f"#### {T('ui.enrichment.title')}")
+    render_enrichment_table(report.ip_enrichment)
 
 
 def render_evidence(report) -> None:
@@ -509,6 +544,7 @@ def render_training(alert, base_report, saved: dict, token: str) -> None:
     render_alert_summary(alert, st.session_state[status_key], show_mitre=False)
     st.markdown(f"#### {T('ui.training.evidence')}")
     render_evidence(base_report)
+    render_enrichment(base_report)
 
     hours = base_config["environment"]["business_hours"]
     answers: dict[str, str] = {}
@@ -613,7 +649,8 @@ with tab_investigate:
 
         if training_mode:
             st.markdown(f"### {alert.alert_id.replace('ALR', 'INC')} - {L(alert.title)}")
-            base_report = build_investigation_report(alert, events, config, all_alerts=alerts)
+            base_report = build_investigation_report(alert, events, config, all_alerts=alerts,
+                                                     enrichment=enrichment)
             render_training(alert, base_report, progress[alert_id], token)
         else:
             col_status, col_notes = st.columns([1, 2])
@@ -621,7 +658,7 @@ with tab_investigate:
                                           key=f"status_free_{token}_{alert_id}")
             notes = col_notes.text_area(T("ui.inv.notes"), key=f"notes_{token}_{alert_id}", height=80)
             report = build_investigation_report(alert, events, config, all_alerts=alerts, status=status,
-                                                analyst_notes=notes)
+                                                analyst_notes=notes, enrichment=enrichment)
             st.markdown(f"### {report.incident_id} - {L(alert.title)}")
             alert_case = case_for_alert(cases, alert.alert_id)
             if alert_case:
@@ -632,6 +669,7 @@ with tab_investigate:
             render_tool_analysis(alert, report)
             st.markdown(f"#### {T('ui.inv.timeline')}")
             render_evidence(report)
+            render_enrichment(report)
             render_exports(report)
 
 # ---------------------------------------------------------------------------

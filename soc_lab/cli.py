@@ -4,6 +4,7 @@
     python -m soc_lab.cli analyse  [--input data/sample_auth_logs.csv] [--export-csv reports/alerts.csv]
     python -m soc_lab.cli report   --alert-id ALR-0010 | --all  [--output-dir reports]
     python -m soc_lab.cli export-rules [--format all|sigma|spl|kql] [--output-dir rules_export]
+    python -m soc_lab.cli lookup-ip 203.0.113.88 [more addresses]
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from .config import DEFAULT_CONFIG_PATH, PROJECT_ROOT, ConfigError, load_config
 from .correlation import cases_to_csv, correlate_alerts, correlation_window
 from .detection import run_detection
 from .detection.export import FORMATS, export_rules
+from .enrichment import enrichment_findings, load_enrichment
 from .log_generator import GeneratorSettings, generate_events, write_dataset
 from .log_loader import LogFileError, load_events
 from .metrics import compute_kpis
@@ -82,8 +84,11 @@ def _cmd_report(args: argparse.Namespace) -> int:
     if not selected:
         print(f"No alert with ID {args.alert_id}. Run 'analyse' to list alert IDs.", file=sys.stderr)
         return 1
+    enrichment = None if args.no_enrichment else load_enrichment()
+    for warning in enrichment.warnings if enrichment else []:
+        print(f"  ! {warning}", file=sys.stderr)
     for alert in selected:
-        report = build_investigation_report(alert, result.events, config, all_alerts=alerts)
+        report = build_investigation_report(alert, result.events, config, all_alerts=alerts, enrichment=enrichment)
         markdown_path, csv_path = save_report(report, args.output_dir)
         print(f"{report.incident_id}: {markdown_path} | {csv_path}")
     return 0
@@ -101,6 +106,22 @@ def _cmd_export_rules(args: argparse.Namespace) -> int:
         path.write_text(rule.text, encoding="utf-8", newline="\n")
         print(f"{path}" + ("" if rule.supported else "  (not expressible in this format - see the file)"))
     print(f"\n{len(exported)} file(s) written. Not tested on a live SIEM: review before production use.")
+    return 0
+
+
+def _cmd_lookup_ip(args: argparse.Namespace) -> int:
+    enrichment = load_enrichment()
+    internal = load_config(args.config)["environment"]["internal_networks"]
+    for warning in enrichment.warnings:
+        print(f"  ! {warning}", file=sys.stderr)
+    for ip in args.ips:
+        info = enrichment.lookup(ip, internal)
+        print(ip)
+        if info.internal:
+            print("  Internal address (configured internal network): no public geolocation.")
+        for finding in enrichment_findings([info]):
+            print(f"  {finding}")
+    print("\nOffline, fictional enrichment data (data/enrichment/). Context for the analyst, not a verdict.")
     return 0
 
 
@@ -132,12 +153,19 @@ def build_parser() -> argparse.ArgumentParser:
             group.add_argument("--alert-id", help="Alert to report on, e.g. ALR-0010.")
             group.add_argument("--all", action="store_true", help="Write a report for every alert.")
             cmd.add_argument("--output-dir", default=str(DEFAULT_REPORT_DIR))
+            cmd.add_argument("--no-enrichment", action="store_true",
+                             help="Do not add the offline IP enrichment (geolocation, ASN, threat intelligence).")
 
     export = sub.add_parser("export-rules", help="Export the detection rules as Sigma, Splunk SPL and Sentinel KQL.")
     export.add_argument("--format", choices=["all", *FORMATS], default="all")
     export.add_argument("--config", default=str(DEFAULT_CONFIG_PATH))
     export.add_argument("--output-dir", default=str(DEFAULT_EXPORT_DIR))
     export.set_defaults(handler=_cmd_export_rules)
+
+    lookup = sub.add_parser("lookup-ip", help="Look addresses up in the offline enrichment files.")
+    lookup.add_argument("ips", nargs="+", metavar="IP")
+    lookup.add_argument("--config", default=str(DEFAULT_CONFIG_PATH))
+    lookup.set_defaults(handler=_cmd_lookup_ip)
     return parser
 
 

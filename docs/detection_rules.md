@@ -104,7 +104,7 @@ These are combinations of weaker signals. Each one produces an alert with its ow
 
 **Severity:** Medium.
 
-**Note:** this is a simplified version of "impossible travel". There is no geolocation, so the rule cannot judge distance.
+**Note:** this is a simplified version of "impossible travel". The logs have no geolocation, so the rule itself cannot judge distance. The investigation report adds a distance check from the offline enrichment files (see [enrichment.md](enrichment.md)); it is context only and never changes the alert or its severity.
 
 **MITRE ATT&CK:** T1078 Valid Accounts.
 

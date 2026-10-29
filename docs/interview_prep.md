@@ -39,10 +39,10 @@
 > I generate data with known scenarios and keep a separate ground-truth file that detection never reads. Tests check that every planted scenario triggers the expected rules, and that normal activity alone produces zero alerts. Unit tests on small hand-built datasets check each threshold boundary - for example, four failures don't trigger R001, five do, and six spaced four minutes apart don't.
 
 **9. What are the main limitations?**
-> It uses only authentication logs from synthetic data - no endpoint, email or proxy telemetry, and no geolocation or threat intelligence. The rules are threshold-based, so slow or distributed attacks can evade them, and credential theft with no failures is largely invisible. Business hours are in UTC without daylight saving. I've documented all of this in the repository.
+> It uses only authentication logs from synthetic data - no endpoint, email or proxy telemetry, and geolocation and threat intelligence only from small offline, fictional files. The rules are threshold-based, so slow or distributed attacks can evade them, and credential theft with no failures is largely invisible. Business hours are in UTC without daylight saving. I've documented all of this in the repository.
 
 **10. How would this map to a real SOC?**
-> The rules mirror common SIEM use cases built on Windows events 4625, 4624 and 4740, and I mapped them to MITRE ATT&CK T1110 and T1078. In a real SOC they would be KQL in Microsoft Sentinel or SPL in Splunk, running against centralised logs, with enrichment and a case-management tool for status and notes. My next step is to rewrite these rules in KQL.
+> The rules mirror common SIEM use cases built on Windows events 4625, 4624 and 4740, and I mapped them to MITRE ATT&CK T1110 and T1078. In a real SOC they would be KQL in Microsoft Sentinel or SPL in Splunk, running against centralised logs, with enrichment and a case-management tool for status and notes. The repository already exports them as Sigma, Splunk SPL and Sentinel KQL, but I have not yet run those queries on a live SIEM.
 
 ## Skills this project demonstrates
 
