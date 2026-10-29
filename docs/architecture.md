@@ -19,6 +19,7 @@
 | `detection/rules.py` | R001-R005 logic and alert wording | models, context |
 | `detection/playbooks.py` | Benign explanations, FP notes, steps, containment, limitations | - |
 | `detection/engine.py` | Rule registry, enable/disable, de-duplication, IDs | rules |
+| `detection/export.py` | Sigma / Splunk SPL / Sentinel KQL export built from the configuration | config values |
 | `metrics.py` / `filters.py` | KPIs, timeline, filtering | models |
 | `reporting.py` | Context checks, conclusion, Markdown/CSV export | context, playbooks |
 | `cli.py` | Command-line entry point | all of the above |

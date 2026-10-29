@@ -20,6 +20,7 @@ Start the dashboard with `streamlit run streamlit_app.py` and open http://localh
 | Event Explorer | Every filtered event, with free-text search across all fields and CSV export |
 | Investigation | A full report for a selected alert; status and analyst notes; Markdown and CSV export |
 | Data Quality | Rows read, accepted and rejected, duplicates removed, and the rejected rows with reasons |
+| Rule Export | The rules as Sigma, Splunk SPL and Sentinel KQL, built from the current thresholds, with downloads and the field mapping |
 | About | Scope and safety notes |
 
 ## Example uses
@@ -51,3 +52,9 @@ In **Event Explorer**, search for `203.0.113` to list every event from the exter
 ### 5. Check data quality
 
 Open **Data Quality**. It shows 1 exact duplicate removed and 3 rows rejected: an invalid timestamp, a missing username and an unknown event type.
+
+### 6. Take a rule to a SIEM
+
+1. Open **Rule Export**, choose *R004* and *Microsoft Sentinel KQL*.
+2. In the sidebar, set **R004 distinct accounts** to 8. The query now says `let min_distinct_accounts = 8;`.
+3. Use **Download all rules (.zip)** to get every rule in every format. See [rule_export.md](rule_export.md).

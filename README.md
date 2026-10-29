@@ -25,10 +25,11 @@ It is a learning and portfolio project built to practise first-line (Tier 1) SOC
 | **Detection engine** | Five rules (R001-R005) with thresholds in `config/detection_rules.json`. Each alert records trigger criteria, severity rationale, supporting event IDs, facts, hypotheses and a possible MITRE ATT&CK mapping. |
 | **Dashboard** | KPIs, alerts by severity, a timeline of failed logons and alerts, an alert queue, a searchable event explorer, filters (date, user, IP, event type, severity), live threshold tuning, and a data-quality view. |
 | **Investigation** | For any alert: context checks, benign explanations, false-positive considerations, recommended steps, proposed containment, evidence timeline, evidence-based conclusion, limitations, status and analyst notes. Export to Markdown and CSV. |
+| **Rule export** | Detection as code: the same rules exported as **Sigma**, **Splunk SPL** and **Microsoft Sentinel KQL**, built from the current thresholds. Available in the dashboard (with downloads) and from the CLI. See [docs/rule_export.md](docs/rule_export.md). |
 | **Languages** | The whole interface - menus, alerts, playbooks, training questions, feedback and the Markdown report - is available in English (default) and Brazilian Portuguese, switched from the sidebar without losing answers or progress. Texts live in `soc_lab/locales/*.json`; log data, IDs and CSV exports are never translated. |
 | **Training mode** | Practise triage before seeing the answer: 15 questions in five stages (understand, collect facts, add context, decide, communicate). The tool's analysis stays hidden until the analyst reveals it; each answer is then shown next to a reference and the ground-truth scenario. Answers are saved locally in `training_answers/` and included in the exported report. |
-| **CLI** | `generate`, `analyse` and `report` commands for working without the dashboard. |
-| **Tests** | 132 pytest tests covering rules, thresholds, validation, metrics, filters, reporting, training mode, translations, the CLI and dashboard tests. |
+| **CLI** | `generate`, `analyse`, `report` and `export-rules` commands for working without the dashboard. |
+| **Tests** | 149 pytest tests covering rules, thresholds, validation, metrics, filters, reporting, training mode, translations, rule export, the CLI and dashboard tests. |
 
 ## Technology stack
 
@@ -64,6 +65,7 @@ mini-soc-lab/
 │   │   ├── context.py         Internal networks, business hours, service accounts
 │   │   ├── rules.py           The five detection rules (pure functions)
 │   │   ├── playbooks.py       Analyst guidance per rule
+│   │   ├── export.py          Sigma / Splunk SPL / Sentinel KQL export
 │   │   └── engine.py          Runs enabled rules, assigns alert IDs
 │   ├── metrics.py             Dashboard KPIs
 │   ├── filters.py             Event and alert filtering
@@ -121,6 +123,9 @@ python -m soc_lab.cli analyse --export-csv reports/alerts.csv
 # Write an investigation report (Markdown + evidence CSV) to reports/
 python -m soc_lab.cli report --alert-id ALR-0010
 python -m soc_lab.cli report --all
+
+# Export the rules as Sigma, Splunk SPL and Sentinel KQL to rules_export/
+python -m soc_lab.cli export-rules
 ```
 
 ## Running tests
@@ -129,7 +134,7 @@ python -m soc_lab.cli report --all
 python -m pytest
 ```
 
-Expected result: `132 passed`. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
+Expected result: `149 passed`. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
 
 ## Sample detection scenarios
 
@@ -169,7 +174,6 @@ More detail: [docs/limitations_and_false_positives.md](docs/limitations_and_fals
 ## Future improvements
 
 - Ingest real-format logs (Windows Security EVTX exports, Linux `auth.log`, Entra ID sign-in logs) through parsers.
-- Export rules as Sigma, or replicate them as Splunk SPL / Microsoft Sentinel KQL queries.
 - Add enrichment (GeoIP, ASN, threat-intelligence lookups) with offline sample data.
 - Persist case status and notes in SQLite.
 - Correlate related alerts into a single incident.
@@ -191,6 +195,7 @@ More detail: [docs/limitations_and_false_positives.md](docs/limitations_and_fals
 | [docs/detection_rules.md](docs/detection_rules.md) | Every rule: criteria, parameters, severity logic, limitations |
 | [docs/limitations_and_false_positives.md](docs/limitations_and_false_positives.md) | Known gaps and false-positive handling |
 | [docs/dashboard_guide.md](docs/dashboard_guide.md) | Dashboard walkthrough and example uses |
+| [docs/rule_export.md](docs/rule_export.md) | Sigma / SPL / KQL export, field mapping, differences from the lab |
 | [docs/sample_incident_report.md](docs/sample_incident_report.md) | Example generated report |
 | [docs/interview_prep.md](docs/interview_prep.md) | Demo script and interview Q&A |
 

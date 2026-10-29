@@ -13,6 +13,7 @@ import streamlit as st
 
 from soc_lab.config import DEFAULT_CONFIG_PATH, ConfigError, load_config, with_overrides
 from soc_lab.detection import run_detection
+from soc_lab.detection.export import CODE_LANGUAGES, FIELD_MAPPING, FORMAT_NAMES, FORMATS, export_rules, export_zip
 from soc_lab.filters import filter_alerts, filter_events
 from soc_lab import training
 from soc_lab.i18n import DEFAULT_LANGUAGE, LANGUAGES, t, tr
@@ -29,7 +30,7 @@ SEVERITY_NAMES = [s.value for s in reversed(SEVERITY_ORDER)]  # Critical first
 SEVERITY_COLOURS = {"Critical": "#d03b3b", "High": "#ec835a", "Medium": "#fab219", "Low": "#2a78d6"}
 RESULT_COLOURS = {"SUCCESS": "#2a78d6", "FAILURE": "#eb6834", "INFO": "#8a8984"}
 DATA_SOURCES = ["sample", "generate", "upload"]
-TAB_IDS = ["overview", "alerts", "events", "investigation", "quality", "about"]
+TAB_IDS = ["overview", "alerts", "events", "investigation", "quality", "export", "about"]
 
 st.set_page_config(page_title="Mini SOC Lab", page_icon=":shield:", layout="wide")
 
@@ -214,7 +215,7 @@ kpis = compute_kpis(view_events, view_alerts)
 tab_labels = [T(f"ui.tab.{tab}") for tab in TAB_IDS]
 tab_key = f"main_tabs_{lang}"
 active_tab = st.session_state.get("active_tab", TAB_IDS[0])
-tab_overview, tab_alerts, tab_events, tab_investigate, tab_quality, tab_about = st.tabs(
+tab_overview, tab_alerts, tab_events, tab_investigate, tab_quality, tab_export, tab_about = st.tabs(
     tab_labels, key=tab_key, default=tab_labels[TAB_IDS.index(active_tab)], on_change="rerun")
 chosen_tab = st.session_state.get(tab_key)
 st.session_state["active_tab"] = TAB_IDS[tab_labels.index(chosen_tab)] if chosen_tab in tab_labels else active_tab
@@ -566,6 +567,38 @@ with tab_quality:
                      column_config=reason_column)
     else:
         st.success(T("ui.quality.all_passed"))
+
+# ---------------------------------------------------------------------------
+# Rule export (detection as code). Built from the same config as the alerts, so the sidebar
+# thresholds apply. The exported files are always in English, like the CSV exports.
+# ---------------------------------------------------------------------------
+with tab_export:
+    st.markdown(T("ui.export.intro"))
+    exported = export_rules(config)
+    if not exported:
+        st.info(T("ui.export.none_enabled"))
+    else:
+        detections = list(dict.fromkeys(rule.detection for rule in exported))
+        col_rule, col_format = st.columns([2, 1])
+        slug = col_rule.selectbox(T("ui.export.rule"), [d.slug for d in detections], key="export_rule",
+                                  format_func=lambda s: next(f"{d.rule_id} - {d.title}" for d in detections
+                                                             if d.slug == s))
+        fmt = col_format.radio(T("ui.export.format"), list(FORMATS), format_func=FORMAT_NAMES.get, horizontal=True,
+                               key="export_format")
+        rule = next(r for r in exported if r.detection.slug == slug and r.fmt == fmt)
+        if not rule.supported:
+            st.warning(T("ui.export.not_expressible"))
+        st.code(rule.text, language=CODE_LANGUAGES[fmt])
+        col_one, col_all = st.columns(2)
+        col_one.download_button(T("ui.export.download", file=rule.filename), rule.text, rule.filename, "text/plain",
+                                key="export_download")
+        col_all.download_button(T("ui.export.download_all"), export_zip(exported), "mini_soc_lab_rules.zip",
+                                "application/zip", key="export_download_all")
+        st.markdown(f"#### {T('ui.export.mapping')}")
+        st.dataframe(pd.DataFrame(FIELD_MAPPING, columns=["lab", "sentinel", "splunk"]), hide_index=True,
+                     column_config={"lab": T("ui.export.col_lab"), "sentinel": T("ui.export.col_sentinel"),
+                                    "splunk": T("ui.export.col_splunk")})
+        st.caption(T("ui.export.caption"))
 
 # ---------------------------------------------------------------------------
 # About

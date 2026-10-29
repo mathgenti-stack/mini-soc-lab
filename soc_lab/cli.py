@@ -3,6 +3,7 @@
     python -m soc_lab.cli generate [--output data/sample_auth_logs.csv] [--days 14] [--seed 42]
     python -m soc_lab.cli analyse  [--input data/sample_auth_logs.csv] [--export-csv reports/alerts.csv]
     python -m soc_lab.cli report   --alert-id ALR-0010 | --all  [--output-dir reports]
+    python -m soc_lab.cli export-rules [--format all|sigma|spl|kql] [--output-dir rules_export]
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from pathlib import Path
 
 from .config import DEFAULT_CONFIG_PATH, PROJECT_ROOT, ConfigError, load_config
 from .detection import run_detection
+from .detection.export import FORMATS, export_rules
 from .log_generator import GeneratorSettings, generate_events, write_dataset
 from .log_loader import LogFileError, load_events
 from .metrics import compute_kpis
@@ -21,6 +23,7 @@ from .reporting import alerts_to_csv, build_investigation_report, save_report
 
 DEFAULT_LOG_PATH = PROJECT_ROOT / "data" / "sample_auth_logs.csv"
 DEFAULT_REPORT_DIR = PROJECT_ROOT / "reports"
+DEFAULT_EXPORT_DIR = PROJECT_ROOT / "rules_export"
 
 
 def _cmd_generate(args: argparse.Namespace) -> int:
@@ -77,6 +80,21 @@ def _cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_export_rules(args: argparse.Namespace) -> int:
+    formats = list(FORMATS) if args.format == "all" else [args.format]
+    exported = export_rules(load_config(args.config), formats)
+    if not exported:
+        print("All rules are disabled in the configuration; nothing to export.", file=sys.stderr)
+        return 1
+    for rule in exported:
+        path = Path(args.output_dir) / rule.path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(rule.text, encoding="utf-8", newline="\n")
+        print(f"{path}" + ("" if rule.supported else "  (not expressible in this format - see the file)"))
+    print(f"\n{len(exported)} file(s) written. Not tested on a live SIEM: review before production use.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="soc_lab", description="Mini SOC Lab - authentication log analysis.")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -104,6 +122,12 @@ def build_parser() -> argparse.ArgumentParser:
             group.add_argument("--alert-id", help="Alert to report on, e.g. ALR-0010.")
             group.add_argument("--all", action="store_true", help="Write a report for every alert.")
             cmd.add_argument("--output-dir", default=str(DEFAULT_REPORT_DIR))
+
+    export = sub.add_parser("export-rules", help="Export the detection rules as Sigma, Splunk SPL and Sentinel KQL.")
+    export.add_argument("--format", choices=["all", *FORMATS], default="all")
+    export.add_argument("--config", default=str(DEFAULT_CONFIG_PATH))
+    export.add_argument("--output-dir", default=str(DEFAULT_EXPORT_DIR))
+    export.set_defaults(handler=_cmd_export_rules)
     return parser
 
 
