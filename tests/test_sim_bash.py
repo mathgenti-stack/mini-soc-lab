@@ -123,7 +123,7 @@ SAME_AS_REAL = [
     "jq '.value[0]' logs/entra_signins.json",
     "jq -c '.value[] | {u: .userPrincipalName, e: .status.errorCode}' logs/entra_signins.json | head -3",
     "jq -r '.value | group_by(.ipAddress)[] | \"\\(length) \\(.[0].ipAddress)\"' logs/entra_signins.json",
-    "tree", "sort -u -t, -k3,3 logs/sample_auth_logs.csv | wc -l", "cat -n logs/linux_auth.log | tail -1",
+    "tree logs", "sort -u -t, -k3,3 logs/sample_auth_logs.csv | wc -l", "cat -n logs/linux_auth.log | tail -1",
     "sort -k2,2n -t, logs/sample_auth_logs.csv | head -1", "ls -l logs | wc -l", "cat missing.txt",
 ]
 
