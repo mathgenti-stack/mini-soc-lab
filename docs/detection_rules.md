@@ -8,7 +8,7 @@ Shared environment settings:
 | --- | --- | --- |
 | `internal_networks` | `10.0.0.0/8` | Classifying a source as internal or external |
 | `business_hours` | 07:00-19:00 UTC, Mon-Fri | R005 out-of-hours check |
-| `service_account_prefixes` | `svc_` | Context checks in reports |
+| `service_account_prefixes` | `svc_` | Context checks in reports; accounts R006 skips |
 
 Severity levels: **Low**, **Medium**, **High**, **Critical**. Every alert stores a `severity_reason` explaining how its level was reached.
 
@@ -108,6 +108,40 @@ These are combinations of weaker signals. Each one produces an alert with its ow
 
 **MITRE ATT&CK:** T1078 Valid Accounts.
 
+## R006 - Logon unusual for this account
+
+**Question:** Does this logon look like the way *this account* normally logs on?
+
+R005 `off_hours_new_source` asks a single yes/no question ("new address, outside business hours?"), with the same business hours for everyone. R006 instead learns a **profile per account** from its own history and asks how many ways a logon differs from it. A night-shift worker's usual hours are 22:00-06:00. An office worker connecting to the domain controller for the first time is unusual even at 14:00.
+
+**How it works:** successful logons for each account are read in time order. Before each logon, the account's profile is built **only from its earlier successful logons**, so the rule never looks ahead. The logon is then compared with the profile on five checks:
+
+| Check | Differs when |
+| --- | --- |
+| Hour of day | no earlier logon within `hour_tolerance` (1) hours of this one (wrapping round midnight) |
+| Source network | the /24 (IPv4) or /64 (IPv6) network was never used by the account. A new address inside a known network is not a difference |
+| Target host | the account never logged on to this host |
+| Logon type | the account never used this logon type (for example `REMOTE_INTERACTIVE` for someone who only uses `INTERACTIVE` and `NETWORK`) |
+| Daily volume | this logon makes today's count exceed *mean + `volume_sigma` (3) × standard deviation* of the account's earlier days (standard deviation at least 1). Needs 3 earlier days, and only the logon that crosses the limit counts |
+
+**Trigger:** at least `min_deviations` (2) checks differ. A single difference is common and harmless (one late evening, one new server), so it never alerts on its own.
+
+**Learning period:** an account is only checked once it has at least `min_baseline_logons` (10) earlier successful logons spanning at least `baseline_learning_days` (5) days. Before that nothing is alerted, because everything is "new". Service accounts (`service_account_prefixes`) are skipped: they follow schedules, not habits, and R003 already covers their failures.
+
+**Severity:** Low with 2 differences, Medium with 3 or more. Raised one level if the source is external.
+
+**What the alert shows:** each differing check next to what is usual for the account (for example *"Unusual hour: 23:00 UTC. Earlier logons were at 08:00-10:59, 14:00-16:59 UTC"*), the size of the baseline, and the checks that matched. This lets the analyst judge the difference instead of trusting a score.
+
+**MITRE ATT&CK:** T1078 Valid Accounts (also used for lateral movement with valid accounts).
+
+**Limitations:**
+- Every logon joins the profile, including the unusual one. An attacker who keeps using an account for long enough becomes "usual" (baseline poisoning). Only the first unusual logon is flagged.
+- Accounts with little history are never checked, so silence is not proof of normal behaviour.
+- The profile only covers the data loaded. A monthly or yearly task looks new every time.
+- Hours are in UTC and are not adjusted for daylight saving time or shift changes.
+
+**False positives:** overtime and on-call work, a new role or project, travel, a new device or home connection, and one-off administrator tasks.
+
 ---
 
 ## Detection coverage on the sample dataset
@@ -117,9 +151,10 @@ These are combinations of weaker signals. Each one produces an alert with its ow
 | Scenario | Expected rules |
 | --- | --- |
 | simulated_brute_force | R001, R003 |
-| simulated_password_spray | R003, R004 |
-| simulated_credential_compromise | R001, R002, R005 |
+| simulated_password_spray | R003, R004, R006 (`l.taylor` had never used the VPN) |
+| simulated_credential_compromise | R001, R002, R005, R006 |
 | ambiguous_rapid_source_change | R005 |
+| ambiguous_unusual_logon | R006 only: same address as usual, so R005 stays quiet |
 | benign_forgotten_password | R001, R005 |
 | benign_authorised_scan | R003, R004 |
 | benign_on_call_engineer | R005 |

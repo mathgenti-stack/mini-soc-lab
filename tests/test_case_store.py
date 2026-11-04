@@ -132,7 +132,7 @@ def test_cli_triage_and_report(tmp_path, capsys):
     assert main(["triage", "--alert-id", "ALR-0010", "--status", "Escalated"]) == 0
     assert "(unchanged)" in capsys.readouterr().out
     assert main(["triage"]) == 0
-    assert "1 of 18 alert(s) triaged" in capsys.readouterr().out
+    assert "1 of 21 alert(s) triaged" in capsys.readouterr().out
     assert main(["report", "--alert-id", "ALR-0010", "--output-dir", str(tmp_path)]) == 0
     report = (tmp_path / "INC-0010.md").read_text(encoding="utf-8")
     assert "| Incident status | Escalated |" in report and "Tier 2 informed." in report

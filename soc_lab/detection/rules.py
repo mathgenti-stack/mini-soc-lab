@@ -8,7 +8,10 @@ observed facts ("12 failed logons were recorded") from hypotheses
 
 from __future__ import annotations
 
+import ipaddress
+import statistics
 from collections import Counter, defaultdict
+from dataclasses import dataclass, field
 
 import pandas as pd
 
@@ -451,3 +454,142 @@ def _rapid_source_change(events, params, ctx) -> list[Alert]:
                 mitre_attack="T1078 Valid Accounts",
             ))
     return alerts
+
+
+# ---------------------------------------------------------------------------
+# R006 - Logon unusual for this account (per-account behavioural baseline)
+# ---------------------------------------------------------------------------
+R006_CHECKS = ("hour", "network", "host", "logon_type", "volume")
+MIN_VOLUME_DAYS = 3  # days of history needed before a daily count can be called unusual
+
+
+@dataclass
+class _AccountProfile:
+    """What one account has done so far, built only from its earlier successful logons."""
+    logons: int = 0
+    first: pd.Timestamp | None = None
+    hours: set = field(default_factory=set)
+    networks: set = field(default_factory=set)
+    hosts: set = field(default_factory=set)
+    logon_types: set = field(default_factory=set)
+    daily: Counter = field(default_factory=Counter)  # date -> successful logons that day
+
+    def ready(self, ts: pd.Timestamp, learning: pd.Timedelta, min_logons: int) -> bool:
+        return self.first is not None and self.logons >= min_logons and ts - self.first >= learning
+
+    def add(self, row, ts: pd.Timestamp) -> None:
+        self.logons += 1
+        self.first = ts if self.first is None else self.first
+        self.hours.add(ts.hour)
+        self.networks.add(source_network(row["source_ip"]))
+        self.hosts.add(row["hostname"])
+        self.logon_types.add(row["logon_type"])
+        self.daily[ts.date()] += 1
+
+
+def source_network(ip: str) -> str:
+    """The /24 (IPv4) or /64 (IPv6) network of an address: addresses change more often than networks."""
+    try:
+        address = ipaddress.ip_address(ip)
+    except ValueError:
+        return str(ip)
+    return str(ipaddress.ip_network(f"{address}/{24 if address.version == 4 else 64}", strict=False))
+
+
+def hour_ranges(hours) -> str:
+    """{8, 9, 10, 14} -> '08:00-10:59, 14:00-14:59'."""
+    ranges: list[list[int]] = []
+    for hour in sorted(hours):
+        if ranges and hour == ranges[-1][1] + 1:
+            ranges[-1][1] = hour
+        else:
+            ranges.append([hour, hour])
+    return ", ".join(f"{start:02d}:00-{end:02d}:59" for start, end in ranges)
+
+
+def _usual(values, limit: int = 6) -> str:
+    shown = sorted(str(v) for v in values if str(v))
+    return ", ".join(shown[:limit]) + (", ..." if len(shown) > limit else "")
+
+
+def _account_deviations(profile: _AccountProfile, row, ts: pd.Timestamp, params: dict) -> list[tuple[str, Msg]]:
+    """Each check where this logon differs from the account's history, with a fact showing what is usual."""
+    found = []
+    tolerance = int(params["hour_tolerance"])
+    if not any((ts.hour + offset) % 24 in profile.hours for offset in range(-tolerance, tolerance + 1)):
+        found.append(("hour", Msg("r006.fact.hour", hour=ts.hour, usual=hour_ranges(profile.hours),
+                                  tolerance=tolerance)))
+    network = source_network(row["source_ip"])
+    if row["source_ip"] not in ("", "-") and network not in profile.networks:
+        found.append(("network", Msg("r006.fact.network", network=network, usual=_usual(profile.networks))))
+    if row["hostname"] and row["hostname"] not in profile.hosts:
+        found.append(("host", Msg("r006.fact.host", host=row["hostname"], usual=_usual(profile.hosts))))
+    if row["logon_type"] and row["logon_type"] not in profile.logon_types:
+        found.append(("logon_type", Msg("r006.fact.logon_type", logon_type=row["logon_type"],
+                                        usual=_usual(profile.logon_types))))
+    earlier_days = [count for day, count in profile.daily.items() if day != ts.date()]
+    if len(earlier_days) >= MIN_VOLUME_DAYS:
+        mean = statistics.fmean(earlier_days)
+        limit = mean + float(params["volume_sigma"]) * max(statistics.pstdev(earlier_days), 1.0)
+        today = profile.daily[ts.date()] + 1
+        if today > limit >= today - 1:  # only the logon that crosses the limit, not every one after it
+            found.append(("volume", Msg("r006.fact.volume", count=today, mean=mean, limit=limit,
+                                        days=len(earlier_days))))
+    return found
+
+
+def detect_unusual_for_account(events: pd.DataFrame, params: dict, ctx: DetectionContext) -> list[Alert]:
+    learning = pd.Timedelta(days=params["baseline_learning_days"])
+    min_logons = int(params["min_baseline_logons"])
+    min_deviations = int(params["min_deviations"])
+    alerts = []
+    for user, group in _logons(events, Result.SUCCESS).groupby("username", sort=True):
+        if ctx.is_service_account(user):
+            continue  # service accounts follow schedules, not habits; other rules cover them
+        profile = _AccountProfile()
+        for index, row in group.sort_values("timestamp", kind="stable").iterrows():
+            ts = row["timestamp"]
+            if profile.ready(ts, learning, min_logons):
+                deviations = _account_deviations(profile, row, ts, params)
+                if len(deviations) >= min_deviations:
+                    alerts.append(_unusual_logon_alert(events.loc[[index]], row, user, profile, deviations,
+                                                       min_deviations, ctx))
+            profile.add(row, ts)  # every logon joins the baseline, including an unusual one
+    return alerts
+
+
+def _unusual_logon_alert(evidence, row, user, profile, deviations, min_deviations, ctx) -> Alert:
+    ts, ip, count = row["timestamp"], row["source_ip"], len(deviations)
+    severity, reasons = Severity.LOW, [Msg("r006.severity.low", count=count)]
+    if count >= 3:
+        severity, reasons = Severity.MEDIUM, [Msg("r006.severity.medium", count=count)]
+    if not ctx.is_internal(ip):
+        severity = severity.escalate()
+        reasons.append(Msg("r006.severity.external"))
+    differing = [check for check, _ in deviations]
+    matched = [Msg(f"r006.check.{check}") for check in R006_CHECKS if check not in differing]
+    facts = [
+        Msg("r006.fact.logon", user=user, time=format_timestamp(ts), ip=ip, kind=ctx.classify_ip(ip),
+            host=_or_not_recorded(row["hostname"]), logon_type=_or_not_recorded(row["logon_type"])),
+        Msg("r006.fact.baseline", count=profile.logons, since=format_timestamp(profile.first),
+            days=(ts - profile.first).days),
+        *[fact for _, fact in deviations],
+    ]
+    if matched:
+        facts.append(Msg("r006.fact.matched", checks=Msg.join(matched, ", ")))
+    return _alert_from(
+        evidence,
+        rule_id="R006",
+        rule_name=Msg("rule.R006.name"),
+        title=Msg("r006.title", user=user, count=count),
+        severity=severity,
+        severity_reason=Msg.join(reasons),
+        entity_type="user",
+        entity=user,
+        trigger_reason=Msg("r006.trigger", min_deviations=min_deviations, total=len(R006_CHECKS), count=count,
+                           checks=Msg.join([Msg(f"r006.check.{check}") for check in differing], ", ")),
+        observed_facts=facts,
+        hypotheses=[Msg("r006.hypothesis.1"), Msg("r006.hypothesis.2")],
+        mitre_attack="T1078 Valid Accounts",
+        extra={"deviations": differing, "baseline_logons": profile.logons},
+    )

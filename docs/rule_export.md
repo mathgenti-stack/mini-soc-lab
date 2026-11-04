@@ -1,6 +1,6 @@
 # Rule export (detection as code)
 
-The five rules can be exported for real SIEMs:
+The six rules can be exported for real SIEMs:
 
 | Format | Runs in | File |
 | --- | --- | --- |
@@ -8,7 +8,7 @@ The five rules can be exported for real SIEMs:
 | **Splunk SPL** | Splunk, on Windows Security events (`sourcetype="XmlWinEventLog:Security"`) | `spl/<rule>.spl` |
 | **Microsoft Sentinel KQL** | Microsoft Sentinel / Log Analytics, on the `SecurityEvent` table | `kql/<rule>.kql` |
 
-Every query is generated from the configuration, so a threshold changed in `config/detection_rules.json` or in the dashboard sidebar changes the exported rule. Disabled rules are not exported. R005 has three patterns, so there are seven detections and 21 files.
+Every query is generated from the configuration, so a threshold changed in `config/detection_rules.json` or in the dashboard sidebar changes the exported rule. Disabled rules are not exported. R005 has three patterns, so there are eight detections and 24 files.
 
 ```bash
 python -m soc_lab.cli export-rules                       # all formats, written to rules_export/
@@ -51,8 +51,9 @@ The SPL searches start with `index=wineventlog`; change the index to the one use
 | R005 Lockout then success | `temporal_ordered` correlation | First success after each lockout, with unlock check |
 | R005 Out-of-hours new source | **Not expressible** (needs a baseline of known addresses) | First logon from each address, outside business hours |
 | R005 Rapid source change | `value_count` correlation on external logons | Consecutive external logons from different addresses |
+| R006 Unusual logon for the account | **Not expressible** (needs each account's history) | Each logon compared with the same account's earlier logons: SPL with `streamstats current=f`, KQL with a join on earlier logons. Four of the lab's five checks (no daily volume) |
 
-For the two rules Sigma cannot express, the `.yml` file contains only comments that explain why and point to the SPL and KQL versions.
+For the three detections Sigma cannot express, the `.yml` file contains only comments that explain why and point to the SPL and KQL versions.
 
 ## Differences from the lab
 
@@ -61,7 +62,8 @@ Each file's header lists the parameters it was built with and the differences th
 - **Severity.** Sigma has one fixed `level` per rule, which is the rule's base severity. The escalation steps (external source, higher peaks, a success during a spray) are in the SPL and KQL versions, which return a `severity` column.
 - **Sigma correlations are approximate.** For example, R002 in Sigma does not restart the failure count after a success, and R005 rapid source change in Sigma also fires when the two logons are not consecutive.
 - **Time zone.** Business hours and R003's days are in UTC. In Splunk, run the search with the user time zone set to UTC; KQL works in UTC.
-- **Baselines.** The out-of-hours rule learns known addresses from the search time range, so search a long enough period.
+- **Baselines.** The out-of-hours rule and R006 learn from the search time range, so search a long enough period. R006's KQL version joins every logon with the account's earlier ones, so keep the range to what the baseline needs.
+- **R006 daily volume.** The lab's fifth check (logons per day compared with the account's earlier days) is not exported, so the SIEM versions use four checks. IPv6 sources are compared as whole addresses, not /64 networks.
 - **Unparseable addresses.** The lab treats an address it cannot parse (for example `-`) as external. In KQL, `ipv4_is_in_any_range` returns no true/false answer for such addresses, so they may be skipped or treated as internal.
 
 ## Validating the Sigma rules

@@ -40,7 +40,7 @@ At least 5 distinct accounts failed to log on from one source address within 30 
 - Source 203.0.113.88 is external; dataset shows no successful logons from this address before the alert.
 - Successful logon(s) from the alert's source address(es) were recorded for: l.taylor (between first activity and one hour after the last).
 - Account name(s) with no successful logon anywhere in the dataset: admin, administrator, guest, test (they may not exist in the directory).
-- Related alerts sharing an account or source address: ALR-0001, ALR-0002, ALR-0003, ALR-0005, ALR-0006, ALR-0009, ALR-0011, ALR-0012, ALR-0013.
+- Related alerts sharing an account or source address: ALR-0001, ALR-0002, ALR-0003, ALR-0005, ALR-0006, ALR-0009, ALR-0011, ALR-0012, ALR-0013, ALR-0014, ALR-0015, ALR-0017.
 - Enrichment: 203.0.113.88 is registered in Bucharest, Romania (RO), AS64501 Example VPS SRL (hosting / cloud provider).
 - Threat intelligence: 203.0.113.88 matches 203.0.113.88 in 'Example Shared Blocklist' as suspicious (high confidence, category password_spraying, seen 2026-09-28 to 2026-10-11).
 

@@ -213,6 +213,9 @@ with st.sidebar.expander(T("ui.thresholds.title")):
                  "min_distinct_accounts": threshold(st.number_input, "R004", "min_distinct_accounts", 2, 100,
                                                     rules["R004"]["min_distinct_accounts"])},
         "R005": {"enabled": threshold(st.checkbox, "R005", "enabled", rules["R005"]["enabled"])},
+        "R006": {"enabled": threshold(st.checkbox, "R006", "enabled", rules["R006"]["enabled"]),
+                 "min_deviations": threshold(st.number_input, "R006", "min_deviations", 1, 5,
+                                             rules["R006"]["min_deviations"])},
     }
     case_window = st.number_input(T("ui.thresholds.correlation_window"), 0, 1440,
                                   int(correlation_window(base_config)), key="thr_correlation_window")

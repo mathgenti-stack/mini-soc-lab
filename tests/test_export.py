@@ -32,11 +32,12 @@ def _code(rule) -> str:
 
 def test_every_detection_is_exported_in_every_format(config):
     exported = export_rules(config)
-    assert len(exported) == len(DETECTIONS) * len(FORMATS) == 21
-    assert len(_by_path(exported)) == 21
+    assert len(exported) == len(DETECTIONS) * len(FORMATS) == 24
+    assert len(_by_path(exported)) == 24
     assert all(rule.text.strip() for rule in exported)
     unsupported = sorted(rule.path for rule in exported if not rule.supported)
-    assert unsupported == ["sigma/R003_high_failure_rate.yml", "sigma/R005_off_hours_new_source.yml"]
+    assert unsupported == ["sigma/R003_high_failure_rate.yml", "sigma/R005_off_hours_new_source.yml",
+                           "sigma/R006_unusual_logon_for_account.yml"]
 
 
 def test_thresholds_come_from_the_configuration(config):
@@ -71,6 +72,19 @@ def test_environment_settings_are_used(config):
     assert "dynamic([0, 1, 2])" in files["kql/R005_off_hours_new_source.kql"].text
 
 
+def test_r006_baseline_settings_come_from_the_configuration(config):
+    tuned = with_overrides(config, {"R006": {"min_deviations": 3, "hour_tolerance": 2, "min_baseline_logons": 20}})
+    files = _by_path(export_rules(tuned))
+    spl, kql = files["spl/R006_unusual_logon_for_account.spl"].text, files["kql/R006_unusual_logon_for_account.kql"].text
+    assert "| where deviations >= 3" in spl and "<= 2, 1, null()" in spl and "baseline_logons >= 20" in spl
+    assert "current=f" in spl  # the profile only uses earlier logons
+    assert 'NOT TargetUserName="svc_*"' in spl
+    assert "let min_deviations = 3;" in kql and "let hour_tolerance = 2;" in kql
+    assert "where EarlierTime < TimeGenerated" in kql
+    assert 'where not(TargetUserName startswith "svc_")' in kql
+    assert "volume_sigma" in spl and "not exported" in kql  # the missing volume check is stated in the header
+
+
 def test_entity_fields_of_r003_are_respected(config):
     only_ip = with_overrides(config, {"R003": {"entity_fields": ["source_ip"]}})
     files = _by_path(export_rules(only_ip))
@@ -80,8 +94,8 @@ def test_entity_fields_of_r003_are_respected(config):
 
 def test_disabled_rules_are_not_exported(config):
     exported = export_rules(with_overrides(config, {"R005": {"enabled": False}}))
-    assert {rule.detection.rule_id for rule in exported} == {"R001", "R002", "R003", "R004"}
-    nothing = with_overrides(config, {rule: {"enabled": False} for rule in ("R001", "R002", "R003", "R004", "R005")})
+    assert {rule.detection.rule_id for rule in exported} == {"R001", "R002", "R003", "R004", "R006"}
+    nothing = with_overrides(config, {rule: {"enabled": False} for rule in ("R001", "R002", "R003", "R004", "R005", "R006")})
     assert export_rules(nothing) == []
 
 
@@ -203,10 +217,10 @@ def test_every_query_mentions_its_rule_and_the_untested_warning(config):
 def test_cli_writes_every_file(tmp_path, capsys):
     assert main(["export-rules", "--output-dir", str(tmp_path)]) == 0
     written = sorted(p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*") if p.is_file())
-    assert len(written) == 21 and "kql/R004_single_ip_many_accounts.kql" in written
-    assert "21 file(s) written" in capsys.readouterr().out
+    assert len(written) == 24 and "kql/R004_single_ip_many_accounts.kql" in written
+    assert "24 file(s) written" in capsys.readouterr().out
     assert main(["export-rules", "--format", "sigma", "--output-dir", str(tmp_path / "only")]) == 0
-    assert len(list((tmp_path / "only").rglob("*.yml"))) == 7
+    assert len(list((tmp_path / "only").rglob("*.yml"))) == 8
 
 
 @pytest.fixture

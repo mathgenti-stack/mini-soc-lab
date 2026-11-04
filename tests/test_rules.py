@@ -17,7 +17,8 @@ def _rule(alerts, rule_id, pattern=""):
 
 def _only(config, *rule_ids):
     """Config with only the given rules enabled."""
-    return with_overrides(config, {r: {"enabled": r in rule_ids} for r in ("R001", "R002", "R003", "R004", "R005")})
+    return with_overrides(config, {r: {"enabled": r in rule_ids}
+                                   for r in ("R001", "R002", "R003", "R004", "R005", "R006")})
 
 
 # --- helper ----------------------------------------------------------------
@@ -189,6 +190,117 @@ def test_r005_source_change_after_window_does_not_alert(config, gap_minutes):
     rows = [event(at(0), result="SUCCESS", source_ip="198.51.100.20"),
             event(at(gap_minutes), result="SUCCESS", source_ip="203.0.113.20")]
     assert _rule(run_detection(make_events(rows), _only(config, "R005")), "R005", "rapid_source_change") == []
+
+
+# --- R006: logon unusual for the account ------------------------------------
+OFFICE = {"source_ip": "10.10.1.50", "hostname": "LON-WS-001", "logon_type": "INTERACTIVE"}
+
+
+def _routine(days=range(5, 13), user="a.user"):
+    """Two logons per working day for a week and a bit: 08:30 at the desk, 14:00 to the file server."""
+    rows = []
+    for day in days:
+        rows.append(event(_night(day, 8, 30), username=user, result="SUCCESS", **OFFICE))
+        rows.append(event(_night(day, 14), username=user, result="SUCCESS", source_ip=OFFICE["source_ip"],
+                          hostname="LON-FS-01", logon_type="NETWORK"))
+    return rows
+
+
+def _r006(config, rows, **params):
+    cfg = _only(config, "R006")
+    if params:
+        cfg = with_overrides(cfg, {"R006": params})
+    return _rule(run_detection(make_events(rows), cfg), "R006")
+
+
+def test_r006_routine_alone_does_not_alert(config):
+    assert _r006(config, _routine()) == []
+
+
+def test_r006_three_differences_from_the_usual_pattern(config):
+    """23:10 Remote Desktop to the domain controller, from the usual internal address."""
+    unusual = event(_night(14, 23, 10), result="SUCCESS", source_ip="10.10.1.50", hostname="LON-DC-01",
+                    logon_type="REMOTE_INTERACTIVE")
+    alerts = _r006(config, _routine() + [unusual])
+    assert len(alerts) == 1
+    alert = alerts[0]
+    assert alert.extra["deviations"] == ["hour", "host", "logon_type"]
+    assert alert.severity == Severity.MEDIUM  # three differences, internal source
+    assert alert.extra["baseline_logons"] == 16
+    facts = " ".join(alert.observed_facts)
+    assert "08:00-08:59, 14:00-14:59" in facts           # what is usual is shown next to what differed
+    assert "LON-DC-01" in facts and "LON-FS-01" in facts
+    assert "source network" in facts and "daily volume" in facts  # the checks that matched are listed too
+
+
+def test_r006_two_differences_external_is_raised_one_level(config):
+    """New external network and new logon type at a usual hour: Low, raised to Medium for the external source."""
+    unusual = event(_night(14, 9), result="SUCCESS", source_ip=EXTERNAL_IP, hostname="LON-WS-001", logon_type="VPN")
+    alerts = _r006(config, _routine() + [unusual])
+    assert [a.extra["deviations"] for a in alerts] == [["network", "logon_type"]]
+    assert alerts[0].severity == Severity.MEDIUM
+    assert "external" in alerts[0].severity_reason
+
+
+def test_r006_one_difference_is_not_enough(config):
+    late = event(_night(14, 22), result="SUCCESS", **OFFICE)  # only the hour is new
+    assert _r006(config, _routine() + [late]) == []
+    assert len(_r006(config, _routine() + [late], min_deviations=1)) == 1
+
+
+def test_r006_same_network_new_address_is_not_a_difference(config):
+    moved = event(_night(14, 22), result="SUCCESS", source_ip="10.10.1.99", hostname="LON-WS-001",
+                  logon_type="INTERACTIVE")  # new address in the usual /24, at a new hour: one difference
+    assert _r006(config, _routine() + [moved]) == []
+
+
+def test_r006_hour_tolerance(config):
+    nearby = event(_night(14, 15, 30), result="SUCCESS", source_ip="10.10.1.50", hostname="LON-DC-01",
+                   logon_type="NETWORK")  # 15:30 is within one hour of the usual 14:00 logons
+    assert _r006(config, _routine() + [nearby]) == []
+    assert _r006(config, _routine() + [nearby], hour_tolerance=0)[0].extra["deviations"] == ["hour", "host"]
+
+
+def test_r006_needs_enough_history(config):
+    unusual = event(_night(8, 23), result="SUCCESS", source_ip=EXTERNAL_IP, hostname="LON-DC-01", logon_type="VPN")
+    assert _r006(config, _routine(days=range(5, 8)) + [unusual]) == []  # 3 days, 6 logons: still learning
+    assert len(_r006(config, _routine(days=range(5, 8)) + [unusual], baseline_learning_days=1,
+                     min_baseline_logons=6)) == 1
+
+
+def test_r006_only_uses_earlier_logons(config):
+    """The profile never looks ahead: logons after the unusual one cannot make it look normal."""
+    unusual = event(_night(14, 23, 10), result="SUCCESS", source_ip="10.10.1.50", hostname="LON-DC-01",
+                    logon_type="REMOTE_INTERACTIVE")
+    later_same = [event(_night(day, 23, 10), result="SUCCESS", source_ip="10.10.1.50", hostname="LON-DC-01",
+                        logon_type="REMOTE_INTERACTIVE") for day in (15, 16)]
+    alerts = _r006(config, _routine() + [unusual] + later_same)
+    assert [a.first_seen.day for a in alerts] == [14]  # once it is in the baseline it is no longer new
+
+
+def test_r006_unusual_daily_volume(config):
+    """A usual two logons a day gives a limit of 2 + 3 x 1 = 5; only the logon that crosses it counts."""
+    busy = [event(_night(14, 9, n), result="SUCCESS", source_ip="10.10.1.50", hostname="LON-FS-01",
+                  logon_type="NETWORK") for n in range(5)]
+    sixth = event(_night(14, 9, 30), result="SUCCESS", source_ip="10.10.1.50", hostname="LON-APP-01",
+                  logon_type="NETWORK")  # crosses the limit, and to a new host
+    seventh = event(_night(14, 9, 40), result="SUCCESS", source_ip="10.10.1.50", hostname="LON-DC-01",
+                    logon_type="NETWORK")  # new host, but the limit was already crossed: one difference only
+    alerts = _r006(config, _routine() + busy + [sixth, seventh])
+    assert [a.extra["deviations"] for a in alerts] == [["host", "volume"]]
+    assert "averaged 2.0 per day (limit 5.0)" in " ".join(alerts[0].observed_facts)
+
+
+def test_r006_ignores_service_accounts(config):
+    rows = _routine(user="svc_backup") + [event(_night(14, 23), username="svc_backup", result="SUCCESS",
+                                                source_ip=EXTERNAL_IP, hostname="LON-DC-01", logon_type="VPN")]
+    assert _r006(config, rows) == []
+
+
+def test_r006_failures_are_not_part_of_the_profile(config):
+    rows = _routine() + [event(_night(14, 23), result="FAILURE", source_ip=EXTERNAL_IP, hostname="LON-DC-01",
+                               logon_type="VPN")]
+    assert _r006(config, rows) == []
 
 
 # --- normal activity ---------------------------------------------------------

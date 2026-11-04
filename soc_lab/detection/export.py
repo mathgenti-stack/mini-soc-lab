@@ -141,6 +141,22 @@ DETECTIONS = [
         ("rapid_source_change_minutes",),
         ("The Sigma version counts distinct external addresses per account within the window, which also fires when the two logons are not consecutive.",),
     ),
+    Detection(
+        "R006_unusual_logon_for_account", "R006", "Logon unusual for this account",
+        "A successful logon that differs from the same account's earlier successful logons in at least "
+        "min_deviations checks: hour of day (within hour_tolerance hours), source network (/24), target host and "
+        "logon type. An account is only checked once it has min_baseline_logons earlier logons spanning "
+        "baseline_learning_days. Service accounts are skipped.",
+        "low", ("attack.initial-access", "attack.lateral-movement", "attack.t1078"),
+        ("Overtime or on-call work", "A new role, project or device", "Travel or a new home connection"),
+        ("baseline_learning_days", "min_baseline_logons", "hour_tolerance", "min_deviations"),
+        ("Severity: low for two differences, medium for three or more, one level higher for an external source.",
+         "The lab's fifth check, daily volume (volume_sigma), is not exported: it needs statistics of the "
+         "account's earlier days only. The exported queries use the other four checks.",
+         "The baseline is the history inside the search time range: search a long enough period.",
+         "IPv6 addresses are compared as whole addresses (the lab uses /64 networks).",
+         "Hours are evaluated in UTC: in Splunk, run the search with the user time zone set to UTC."),
+    ),
 ]
 
 
@@ -371,6 +387,11 @@ def _sigma_r005_off_hours(d, p, env):
                                     "and Sigma has no notion of a value never seen before.")
 
 
+def _sigma_r006(d, p, env):
+    return _sigma_unsupported(d, p, "the rule compares each logon with the same account's earlier logons "
+                                    "(a behavioural baseline), and Sigma has no notion of an account's history.")
+
+
 def _sigma_r005_rapid(d, p, env):
     window = f"{_num(p['rapid_source_change_minutes'])}m"
     internal = {"filter_internal": {"IpAddress|cidr": list(env["internal_networks"])}}
@@ -512,6 +533,39 @@ def _spl_r005_off_hours(d, p, env):
         f"{_num(float(p['baseline_learning_days']) * 86400)}",
         f"| eval is_external={_spl_is_external(env)}, severity=if(is_external=1, \"Medium\", \"Low\")",
         "| table _time TargetUserName IpAddress severity",
+    ])
+
+
+def _spl_r006(d, p, env):
+    tolerance = int(p["hour_tolerance"])
+    service = " ".join(f'NOT TargetUserName="{prefix}*"' for prefix in env.get("service_account_prefixes", []))
+
+    def unseen(values: str, field: str) -> str:
+        return f"if(isnull(mvmap({values}, if({values}=={field}, 1, null()))), 1, 0)"
+
+    return _spl(d, p, [
+        f"{SPL_SOURCE} EventCode=4624 {service}".rstrip(),
+        "| sort 0 _time",
+        "| eval hour=tonumber(strftime(_time, \"%H\")),",
+        r'    network=if(match(IpAddress, "^\d+\.\d+\.\d+\.\d+$"), replace(IpAddress, "^(\d+\.\d+\.\d+)\.\d+$", "\1.0/24"), IpAddress)',
+        "``` the profile: earlier successful logons of the same account only (current=f) ```",
+        "| streamstats current=f count AS baseline_logons min(_time) AS first_seen values(hour) AS usual_hours",
+        "    values(network) AS usual_networks values(host) AS usual_hosts values(LogonType) AS usual_logon_types",
+        "    BY TargetUserName",
+        f"| where baseline_logons >= {int(p['min_baseline_logons'])} AND _time - first_seen >= "
+        f"{_num(float(p['baseline_learning_days']) * 86400)}",
+        f"| eval new_hour=if(isnull(mvmap(usual_hours, if(min(abs(usual_hours - hour), 24 - abs(usual_hours - hour))"
+        f" <= {tolerance}, 1, null()))), 1, 0),",
+        f"    new_network={unseen('usual_networks', 'network')},",
+        f"    new_host={unseen('usual_hosts', 'host')},",
+        f"    new_logon_type={unseen('usual_logon_types', 'LogonType')}",
+        "| eval deviations=new_hour + new_network + new_host + new_logon_type",
+        f"| where deviations >= {int(p['min_deviations'])}",
+        f"| eval is_external={_spl_is_external(env)},",
+        "    severity=case(deviations >= 3 AND is_external=1, \"High\", deviations >= 3 OR is_external=1, \"Medium\", "
+        "true(), \"Low\")",
+        "| table _time TargetUserName IpAddress host LogonType deviations new_hour new_network new_host "
+        "new_logon_type baseline_logons severity",
     ])
 
 
@@ -717,17 +771,57 @@ def _kql_r005_rapid(d, p, env):
     ])
 
 
+def _kql_r006(d, p, env):
+    service = " or ".join(f"TargetUserName startswith {json.dumps(prefix)}"
+                          for prefix in env.get("service_account_prefixes", []))
+    return _kql(d, p, [
+        f"let baseline_learning = {_num(p['baseline_learning_days'])}d;",
+        f"let min_baseline_logons = {int(p['min_baseline_logons'])};",
+        f"let hour_tolerance = {int(p['hour_tolerance'])};",
+        f"let min_deviations = {int(p['min_deviations'])};",
+        _kql_internal(env),
+        f"let successes = materialize({KQL_TABLE}",
+        "    | where EventID == 4624",
+        *([f"    | where not({service})  // service accounts follow schedules, not habits"] if service else []),
+        "    | extend hour = hourofday(TimeGenerated),",
+        "        network = iff(isempty(format_ipv4_mask(IpAddress, 24)), IpAddress, format_ipv4_mask(IpAddress, 24))",
+        "    | project TimeGenerated, TargetUserName, IpAddress, Computer, LogonType, hour, network);",
+        "// Compare each logon with the earlier logons of the same account (the join is quadratic per account:",
+        "// keep the time range to what the baseline needs).",
+        "successes",
+        "| join kind=inner (successes",
+        "    | project TargetUserName, EarlierTime = TimeGenerated, EarlierHour = hour, EarlierNetwork = network,",
+        "        EarlierComputer = Computer, EarlierLogonType = LogonType) on TargetUserName",
+        "| where EarlierTime < TimeGenerated",
+        "| summarize baseline_logons = count(), first_seen = min(EarlierTime),",
+        "    near_hour = countif(min_of(abs(EarlierHour - hour), 24 - abs(EarlierHour - hour)) <= hour_tolerance),",
+        "    same_network = countif(EarlierNetwork == network), same_host = countif(EarlierComputer == Computer),",
+        "    same_logon_type = countif(EarlierLogonType == LogonType)",
+        "    by TimeGenerated, TargetUserName, IpAddress, Computer, LogonType, hour, network",
+        "| where baseline_logons >= min_baseline_logons and TimeGenerated - first_seen >= baseline_learning",
+        "| extend new_hour = toint(near_hour == 0), new_network = toint(same_network == 0),",
+        "    new_host = toint(same_host == 0), new_logon_type = toint(same_logon_type == 0)",
+        "| extend deviations = new_hour + new_network + new_host + new_logon_type",
+        "| where deviations >= min_deviations",
+        "| extend is_external = not(ipv4_is_in_any_range(IpAddress, internal_networks))",
+        "| extend severity = case(deviations >= 3 and is_external, \"High\", deviations >= 3 or is_external, \"Medium\",",
+        "    \"Low\")",
+        "| project TimeGenerated, TargetUserName, IpAddress, Computer, LogonType, deviations, new_hour, new_network,",
+        "    new_host, new_logon_type, baseline_logons, severity",
+    ])
+
+
 _BUILDERS = {
     "sigma": {"R001_multiple_failed_logons": _sigma_r001, "R002_success_after_failures": _sigma_r002,
               "R003_high_failure_rate": _sigma_r003, "R004_single_ip_many_accounts": _sigma_r004,
               "R005_lockout_then_success": _sigma_r005_lockout, "R005_off_hours_new_source": _sigma_r005_off_hours,
-              "R005_rapid_source_change": _sigma_r005_rapid},
+              "R005_rapid_source_change": _sigma_r005_rapid, "R006_unusual_logon_for_account": _sigma_r006},
     "spl": {"R001_multiple_failed_logons": _spl_r001, "R002_success_after_failures": _spl_r002,
             "R003_high_failure_rate": _spl_r003, "R004_single_ip_many_accounts": _spl_r004,
             "R005_lockout_then_success": _spl_r005_lockout, "R005_off_hours_new_source": _spl_r005_off_hours,
-            "R005_rapid_source_change": _spl_r005_rapid},
+            "R005_rapid_source_change": _spl_r005_rapid, "R006_unusual_logon_for_account": _spl_r006},
     "kql": {"R001_multiple_failed_logons": _kql_r001, "R002_success_after_failures": _kql_r002,
             "R003_high_failure_rate": _kql_r003, "R004_single_ip_many_accounts": _kql_r004,
             "R005_lockout_then_success": _kql_r005_lockout, "R005_off_hours_new_source": _kql_r005_off_hours,
-            "R005_rapid_source_change": _kql_r005_rapid},
+            "R005_rapid_source_change": _kql_r005_rapid, "R006_unusual_logon_for_account": _kql_r006},
 }

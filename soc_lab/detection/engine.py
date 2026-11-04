@@ -14,6 +14,7 @@ from .rules import (
     detect_single_ip_many_accounts,
     detect_success_after_failures,
     detect_suspicious_patterns,
+    detect_unusual_for_account,
 )
 
 RuleFunction = Callable[[pd.DataFrame, dict, DetectionContext], list[Alert]]
@@ -24,6 +25,7 @@ RULE_REGISTRY: dict[str, tuple[str, RuleFunction]] = {
     "R003": ("High authentication failure rate", detect_high_failure_rate),
     "R004": ("Repeated failures from a single IP across many accounts", detect_single_ip_many_accounts),
     "R005": ("Suspicious authentication pattern", detect_suspicious_patterns),
+    "R006": ("Logon unusual for this account", detect_unusual_for_account),
 }
 
 

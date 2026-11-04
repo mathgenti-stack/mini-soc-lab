@@ -47,7 +47,7 @@ def test_every_alert_references_existing_events(generated_analysis):
 # --- config --------------------------------------------------------------------
 def test_default_config_is_valid():
     config = load_config()
-    assert set(config["rules"]) == {"R001", "R002", "R003", "R004", "R005"}
+    assert set(config["rules"]) == {"R001", "R002", "R003", "R004", "R005", "R006"}
 
 
 def test_missing_config_file_raises(tmp_path):
@@ -69,6 +69,9 @@ def test_malformed_json_raises(tmp_path):
     ("R003", "failure_rate_threshold", 1.5),
     ("R003", "entity_fields", ["hostname"]),
     ("R005", "baseline_learning_days", -1),
+    ("R006", "min_deviations", 0),
+    ("R006", "volume_sigma", "high"),
+    ("R006", "hour_tolerance", -1),
 ])
 def test_invalid_parameter_values_are_rejected(config, rule_id, param, value):
     with pytest.raises(ConfigError):

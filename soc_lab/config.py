@@ -18,9 +18,10 @@ REQUIRED_RULE_PARAMS = {
     "R003": ["entity_fields", "min_attempts", "failure_rate_threshold", "high_failure_rate"],
     "R004": ["window_minutes", "min_distinct_accounts", "high_distinct_accounts"],
     "R005": ["lockout_success_window_minutes", "rapid_source_change_minutes", "baseline_learning_days"],
+    "R006": ["baseline_learning_days", "min_baseline_logons", "hour_tolerance", "volume_sigma", "min_deviations"],
 }
 RATE_PARAMS = {"failure_rate_threshold", "high_failure_rate"}
-NON_NEGATIVE_PARAMS = {"baseline_learning_days"}
+NON_NEGATIVE_PARAMS = {"baseline_learning_days", "hour_tolerance"}
 
 
 class ConfigError(ValueError):

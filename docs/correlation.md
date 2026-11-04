@@ -34,7 +34,7 @@ Case IDs (`CASE-`) are different from the incident IDs of the per-alert reports 
 
 ## Result on the sample dataset
 
-The 18 alerts become 9 cases, one per planted scenario:
+The 21 alerts become 10 cases, one per planted scenario:
 
 | Case | Alerts | Scenario |
 | --- | --- | --- |
@@ -42,11 +42,12 @@ The 18 alerts become 9 cases, one per planted scenario:
 | CASE-0002 | ALR-0004 | On-call engineer `d.brown` |
 | CASE-0003 | ALR-0005, ALR-0006 | Authorised vulnerability scan |
 | CASE-0004 | ALR-0007, ALR-0008 | `e.wilson` forgot a password |
-| CASE-0005 | ALR-0009, ALR-0010 | Password spray (Critical) |
-| CASE-0006 | ALR-0011, ALR-0012, ALR-0013 | Credential compromise of `r.khan` |
-| CASE-0007 | ALR-0014 | Rapid source change for `s.ahmed` |
-| CASE-0008 | ALR-0015, ALR-0016 | `svc_backup`, first night |
-| CASE-0009 | ALR-0017, ALR-0018 | `svc_backup`, second night |
+| CASE-0005 | ALR-0009, ALR-0010, ALR-0011 | Password spray (Critical), including R006 for `l.taylor`'s first VPN logon |
+| CASE-0006 | ALR-0012, ALR-0013, ALR-0014, ALR-0015 | Credential compromise of `r.khan` |
+| CASE-0007 | ALR-0016 | Rapid source change for `s.ahmed` |
+| CASE-0008 | ALR-0017 | `c.evans`: unusual Remote Desktop logon to the domain controller |
+| CASE-0009 | ALR-0018, ALR-0019 | `svc_backup`, first night |
+| CASE-0010 | ALR-0020, ALR-0021 | `svc_backup`, second night |
 
 A test checks that, on the generated dataset, every case contains evidence from a single ground-truth scenario.
 

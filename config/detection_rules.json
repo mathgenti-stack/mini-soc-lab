@@ -42,6 +42,14 @@
       "lockout_success_window_minutes": 120,
       "rapid_source_change_minutes": 15,
       "baseline_learning_days": 2
+    },
+    "R006": {
+      "enabled": true,
+      "baseline_learning_days": 5,
+      "min_baseline_logons": 10,
+      "hour_tolerance": 1,
+      "volume_sigma": 3,
+      "min_deviations": 2
     }
   }
 }

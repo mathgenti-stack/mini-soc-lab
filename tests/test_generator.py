@@ -15,9 +15,10 @@ ALLOWED_NETWORKS = [ipaddress.ip_network(n) for n in
 # Which rule(s) each planted scenario is expected to trigger with the default configuration.
 EXPECTED_DETECTIONS = {
     "simulated_brute_force": {"R001", "R003"},
-    "simulated_password_spray": {"R003", "R004"},
-    "simulated_credential_compromise": {"R001", "R002", "R005"},
+    "simulated_password_spray": {"R003", "R004", "R006"},
+    "simulated_credential_compromise": {"R001", "R002", "R005", "R006"},
     "ambiguous_rapid_source_change": {"R005"},
+    "ambiguous_unusual_logon": {"R006"},
     "benign_forgotten_password": {"R001", "R005"},
     "benign_authorised_scan": {"R003", "R004"},
     "benign_on_call_engineer": {"R005"},
@@ -62,6 +63,14 @@ def test_each_planted_scenario_is_detected(generated_analysis, scenario, expecte
     _events, _quality, alerts, truth = generated_analysis
     triggered = {a.rule_id for a in alerts if any(truth[e] == scenario for e in a.evidence_event_ids)}
     assert expected_rules <= triggered
+
+
+def test_unusual_logon_is_seen_only_by_the_account_baseline(generated_analysis):
+    """The planted scenario uses the account's usual address: only R006 (the profile) can see it."""
+    _events, _quality, alerts, truth = generated_analysis
+    hits = [a for a in alerts if any(truth[e] == "ambiguous_unusual_logon" for e in a.evidence_event_ids)]
+    assert [(a.rule_id, a.severity.value, a.extra["deviations"]) for a in hits] == \
+        [("R006", "Medium", ["hour", "host", "logon_type"])]
 
 
 def test_normal_activity_alone_generates_no_alerts(generated):

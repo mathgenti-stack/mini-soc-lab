@@ -21,19 +21,22 @@ The dashboard's incident status list reflects these outcomes.
 | R003 x4 for `svc_backup` / `10.10.5.20` | Backup job retrying with an expired password every 4 minutes | Service-account naming, regular intervals, `EXPIRED_PASSWORD` reason, and a later password change are all reported |
 | R005 for `d.brown` | On-call engineer at 02:31 from a hotel | Playbook advises checking the on-call rota. The conclusion stays cautious because the source is external. |
 | R005 for `s.ahmed` | Two external addresses within 7 minutes | Explicitly marked as needing user verification; the offline enrichment shows both addresses registered in London (home broadband, then a mobile network) |
+| R006 for `c.evans` | Remote Desktop to the domain controller at 23:12, from the usual workstation | Ambiguous by design. The facts show each difference next to what is usual (hours 08-17, own workstation and file servers), and the playbook points to change tickets and the user. |
 
 ## Design choices that reduce false positives
 
 - **Minimum attempts** for failure-rate alerts (R003), so one failed attempt out of one is not reported as a 100% failure rate.
 - **Failure counter reset** after each success (R002), so occasional typos never add up.
-- **Baseline learning period** (R005), so the first logons in the data are not all flagged as "new".
+- **Baseline learning period** (R005, R006), so the first logons in the data are not all flagged as "new". R006 also needs a minimum number of earlier logons per account.
+- **Several differences at once** (R006): one late evening or one new server is common, so a single difference never alerts. Networks are compared as /24, so a new DHCP address in a known network is not a difference.
 - **Internal/external classification** lowers severity for internal sources.
 - **Tuning recorded:** R003 `min_attempts` was raised from 10 to 15 after the authorised scan produced five near-identical alerts.
 
 ## Known detection gaps (false negatives)
 
 - Slow or distributed attacks below the thresholds.
-- Credential use with no preceding failures (for example phished or reused passwords). Only R005 might notice it, and only out of hours or from rapidly changing sources.
+- Credential use with no preceding failures (for example phished or reused passwords). R005 notices it only out of hours or from rapidly changing sources; R006 notices it only when the logon differs from the account's habits in several ways. An attacker who copies the user's habits (same hours, a VPN the user already uses) stays invisible.
+- R006 baseline poisoning: every logon joins the profile, so activity that continues long enough becomes "usual". Accounts with little history are not checked at all.
 - Attacks from internal addresses look less severe by design.
 - Anything not visible in authentication logs: malware, data exfiltration, lateral movement, MFA fatigue.
 

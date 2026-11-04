@@ -98,6 +98,7 @@ SCENARIO_GUIDES = {name: ScenarioGuide(name, statuses) for name, statuses in [
     ("simulated_password_spray", ("Escalated",)),
     ("simulated_credential_compromise", ("Escalated",)),
     ("ambiguous_rapid_source_change", ("In Progress", "Escalated")),
+    ("ambiguous_unusual_logon", ("In Progress", "Escalated")),
     ("benign_forgotten_password", ("Closed - Benign True Positive",)),
     ("benign_authorised_scan", ("Closed - Benign True Positive",)),
     ("benign_on_call_engineer", ("Closed - Benign True Positive",)),

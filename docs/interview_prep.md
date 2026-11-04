@@ -4,8 +4,8 @@
 
 | Time | Action | What to say |
 | --- | --- | --- |
-| 0:00-0:30 | Show the README | "This is a mini SOC lab I built to practise Tier 1 triage. It generates synthetic authentication logs, runs five configurable detection rules, and produces investigation reports. All the data is fictional - external IPs come from RFC 5737 documentation ranges." |
-| 0:30-1:15 | Dashboard, Overview tab | "About 1,000 events over two weeks. These KPIs are calculated from the processed data. There are 18 alerts: one Critical, five High. The timeline shows failed logons per hour, with alert markers on top." |
+| 0:00-0:30 | Show the README | "This is a mini SOC lab I built to practise Tier 1 triage. It generates synthetic authentication logs, runs six configurable detection rules, and produces investigation reports. All the data is fictional - external IPs come from RFC 5737 documentation ranges." |
+| 0:30-1:15 | Dashboard, Overview tab | "About 1,000 events over two weeks. These KPIs are calculated from the processed data. There are 21 alerts: one Critical, seven High. The timeline shows failed logons per hour, with alert markers on top." |
 | 1:15-1:45 | Data Quality tab | "Before detection, the loader validates the input. Here it removed a duplicate and rejected three rows - an invalid timestamp, a missing username and an unknown event type. I reject bad data rather than guess, because evidence needs to be trustworthy." |
 | 1:45-3:15 | Investigation, ALR-0010 | "The Critical alert is R004: one external address failed against 15 accounts in 15 minutes, four of them unrecognised names - consistent with password spraying. What made it Critical is this fact: l.taylor logged on successfully from the same address, with no failures. A spray only needs one hit. The report separates facts from hypotheses, lists benign explanations such as an authorised scanner, and the conclusion says 'consistent with possible unauthorised access but does not confirm it'. I'd escalate and export the report." Click *Export report (Markdown)*. |
 | 3:15-4:00 | Investigation, ALR-0007 | "Not every alert is an attack. e.wilson had ten failures and a lockout, but the context checks find a password change three days earlier and a service desk unlock. The tool flags these as possible benign indicators, and the analyst confirms them against a ticket before closing." |
@@ -71,7 +71,7 @@
 
 **Mini SOC Lab - personal project** (Python, pandas, Streamlit, pytest)
 
-- Built a lab that generates synthetic authentication logs and detects suspicious logon patterns using five configurable rules (failed-logon bursts, success after failures, failure rate, password spraying, out-of-hours and rapid source changes), mapped to MITRE ATT&CK.
+- Built a lab that generates synthetic authentication logs and detects suspicious logon patterns using six configurable rules (failed-logon bursts, success after failures, failure rate, password spraying, out-of-hours and rapid source changes, and a per-account behavioural baseline), mapped to MITRE ATT&CK.
 - Developed a Streamlit dashboard for alert triage, with filters, a timeline and investigation reports that separate observed facts from hypotheses and list benign explanations; reports export to Markdown and CSV.
 - Implemented input validation for malformed and duplicate records, and wrote 99 automated pytest tests, including detection-coverage tests against labelled scenarios.
 - Documented the detection logic, false-positive handling, rule tuning and limitations.

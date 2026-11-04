@@ -56,7 +56,7 @@ Open **Data Quality**. It shows 1 exact duplicate removed and 3 rows rejected: a
 
 ### 6. Triage a case instead of single alerts
 
-1. Open **Cases** and select *CASE-0006*: three alerts (R001, R002, R005) about `r.khan`.
+1. Open **Cases** and select *CASE-0006*: four alerts (R001, R002, R005, R006) about `r.khan`.
 2. *Why these alerts are grouped* shows they all share the account and the address 203.0.113.120.
 3. The combined timeline shows the whole story: 8 failures, then a successful VPN logon in the evening.
 4. In the sidebar, set **Case grouping window** to 0. *CASE-0004* (`e.wilson`) splits in two, because its alerts are 15 seconds apart and do not overlap.

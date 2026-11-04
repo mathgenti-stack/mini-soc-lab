@@ -116,12 +116,12 @@ def test_benign_scenario_expects_a_benign_verdict_and_closing(sample):
 def test_ambiguous_scenario_expects_verification(sample):
     answers = {"verdict": "Uncertain: two addresses in 7 minutes, I need to confirm with s.ahmed.",
                "action": "Verify with the user before closing."}
-    passed = labels(score(sample, "ALR-0014", answers, status="In Progress"), True)
+    passed = labels(score(sample, "ALR-0016", answers, status="In Progress"), True)
     assert {"verdict_uncertain", "action_verify", "status"} <= set(passed)
 
 
 def test_service_account_is_expected_to_be_recognised(sample):
-    card = score(sample, "ALR-0016", {"account_type": "svc_backup is a service account used by the backup job."})
+    card = score(sample, "ALR-0019", {"account_type": "svc_backup is a service account used by the backup job."})
     assert "service" in labels(card, True)
 
 
@@ -137,7 +137,7 @@ def test_without_ground_truth_the_tool_conclusion_sets_the_verdict(sample):
 
 @pytest.mark.parametrize("lang", list(LANGUAGES))
 def test_every_check_has_a_translation(sample, lang):
-    for alert_id in ("ALR-0001", "ALR-0004", "ALR-0008", "ALR-0010", "ALR-0014", "ALR-0016"):
+    for alert_id in ("ALR-0001", "ALR-0004", "ALR-0008", "ALR-0010", "ALR-0016", "ALR-0017", "ALR-0019"):
         for check in score(sample, alert_id, SPRAY_EN, status="New").checks:
             assert has_key(check.label.key) and tr(check.label, lang)
 

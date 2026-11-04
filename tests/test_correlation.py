@@ -45,13 +45,14 @@ def test_sample_dataset_groups_alerts_by_scenario(sample_alerts):
         ["ALR-0004"],                          # on-call engineer
         ["ALR-0005", "ALR-0006"],              # authorised scan
         ["ALR-0007", "ALR-0008"],              # e.wilson forgot a password
-        ["ALR-0009", "ALR-0010"],              # password spray
-        ["ALR-0011", "ALR-0012", "ALR-0013"],  # r.khan compromise
-        ["ALR-0014"],                          # rapid source change
-        ["ALR-0015", "ALR-0016"],              # svc_backup, first night
-        ["ALR-0017", "ALR-0018"],              # svc_backup, second night
+        ["ALR-0009", "ALR-0010", "ALR-0011"],  # password spray (R006: l.taylor's unusual VPN logon)
+        ["ALR-0012", "ALR-0013", "ALR-0014", "ALR-0015"],  # r.khan compromise
+        ["ALR-0016"],                          # rapid source change
+        ["ALR-0017"],                          # c.evans: unusual logon to the domain controller
+        ["ALR-0018", "ALR-0019"],              # svc_backup, first night
+        ["ALR-0020", "ALR-0021"],              # svc_backup, second night
     ]
-    assert [case.case_id for case in cases] == [f"CASE-{n:04d}" for n in range(1, 10)]
+    assert [case.case_id for case in cases] == [f"CASE-{n:04d}" for n in range(1, 11)]
     assert case_for_alert(cases, "ALR-0010").severity == Severity.CRITICAL
     assert sorted(a for case in cases for a in case.alert_ids) == sorted(a.alert_id for a in sample_alerts)
 
@@ -117,7 +118,7 @@ def test_csv_export(sample_alerts):
     assert csv[0] == ("case_id,severity,alert_count,alert_ids,rule_ids,title,entities,first_seen,last_seen,"
                       "event_count,usernames,source_ips,mitre_attack")
     assert csv[1].startswith('CASE-0001,High,3,"ALR-0001, ALR-0002, ALR-0003","R001, R003"')
-    assert len(csv) == 10
+    assert len(csv) == 11
     assert all(type(value) is str for value in cases_to_frame(correlate_alerts(sample_alerts))["title"])
 
 
@@ -135,8 +136,8 @@ def test_window_comes_from_the_configuration(config):
 def test_cli_prints_and_exports_cases(tmp_path, capsys):
     assert main(["analyse", "--input", str(SAMPLE), "--export-cases-csv", str(tmp_path / "cases.csv")]) == 0
     output = capsys.readouterr().out
-    assert "Cases: 9 (alerts sharing an account or address, at most 120 min apart)" in output
-    assert "CASE-0005  Critical  ALR-0009, ALR-0010" in output
+    assert "Cases: 10 (alerts sharing an account or address, at most 120 min apart)" in output
+    assert "CASE-0005  Critical  ALR-0009, ALR-0010, ALR-0011" in output
     assert (tmp_path / "cases.csv").read_text(encoding="utf-8").startswith("case_id,")
 
 
@@ -152,8 +153,8 @@ def test_dashboard_cases_tab(app, lang):
     app.run()
     app.segmented_control(key="lang").set_value(lang).run()
     assert t("ui.tab.cases", lang) in [tab.label for tab in app.tabs]
-    assert {m.label: m.value for m in app.metric}[t("ui.kpi.cases", lang)] == "9"
-    assert any(s.value == t("ui.cases.header", lang, count=9) for s in app.subheader)
+    assert {m.label: m.value for m in app.metric}[t("ui.kpi.cases", lang)] == "10"
+    assert any(s.value == t("ui.cases.header", lang, count=10) for s in app.subheader)
 
     case_select = app.selectbox(key="case_select_sample_auth_logs_csv")
     case_select.set_value("CASE-0005").run()
@@ -163,7 +164,7 @@ def test_dashboard_cases_tab(app, lang):
     assert any(reason in m.value for m in app.markdown)
 
     app.number_input(key="thr_correlation_window").set_value(0).run()
-    assert {m.label: m.value for m in app.metric}[t("ui.kpi.cases", lang)] == "10"  # e.wilson's alerts split
+    assert {m.label: m.value for m in app.metric}[t("ui.kpi.cases", lang)] == "11"  # e.wilson's alerts split
 
 
 def test_filters_never_split_a_case(app):
@@ -171,11 +172,11 @@ def test_filters_never_split_a_case(app):
     app.multiselect(key="filter_severity").set_value(["Critical"]).run()
     assert {m.label: m.value for m in app.metric}["Cases"] == "1"
     app.selectbox(key="case_select_sample_auth_logs_csv").set_value("CASE-0005").run()
-    assert {m.label: m.value for m in app.metric}["Alerts"] == "2"  # ALR-0009 (High) is kept in its case
+    assert {m.label: m.value for m in app.metric}["Alerts"] == "3"  # ALR-0009 and ALR-0011 (High) stay in it
 
 
 def test_investigation_shows_the_case(app):
     app.run()
     app.toggle(key="training_mode").set_value(False).run()
     next(s for s in app.selectbox if s.label.startswith("Select an alert")).set_value("ALR-0010").run()
-    assert any(i.value == t("ui.inv.case", case="CASE-0005", others="ALR-0009") for i in app.info)
+    assert any(i.value == t("ui.inv.case", case="CASE-0005", others="ALR-0009, ALR-0011") for i in app.info)

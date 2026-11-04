@@ -170,7 +170,7 @@ def test_reports_with_enrichment(sample, data):
 
 
 def test_rapid_source_change_gets_a_travel_check(sample, data):
-    report = _report(sample, "ALR-0014", data)  # s.ahmed: home broadband, then a mobile network
+    report = _report(sample, "ALR-0016", data)  # s.ahmed: home broadband, then a mobile network
     travel = [f for f in report.context_findings if getattr(f, "key", "") == "enrichment.finding.same_area"]
     assert len(travel) == 1 and travel[0].params["first"] == "198.51.100.23"
     assert "No geolocation or ASN data is available in this lab." not in report.limitations

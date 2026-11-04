@@ -15,7 +15,7 @@ from ..i18n import Msg, keys_with_prefix
 
 PLAYBOOK_KEYS = [
     "R001", "R002", "R003", "R004",
-    "R005:lockout_then_success", "R005:off_hours_new_source", "R005:rapid_source_change",
+    "R005:lockout_then_success", "R005:off_hours_new_source", "R005:rapid_source_change", "R006",
 ]
 
 

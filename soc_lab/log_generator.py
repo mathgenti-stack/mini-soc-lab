@@ -77,6 +77,7 @@ SCENARIO_DESCRIPTIONS = {
     "simulated_password_spray": "Simulated: one external IP tries one password against many accounts; one attempt succeeds.",
     "simulated_credential_compromise": "Simulated: repeated failures then a successful evening VPN logon from a new external IP.",
     "ambiguous_rapid_source_change": "Ambiguous: two VPN logons from different external IPs within minutes (could be mobile tethering).",
+    "ambiguous_unusual_logon": "Ambiguous: an office worker uses Remote Desktop from their own workstation to the domain controller late at night, which they have never done (could be an approved task or lateral movement).",
     "benign_forgotten_password": "Benign: user forgot a recently changed password, was locked out and unlocked by the service desk.",
     "benign_authorised_scan": "Benign: authorised internal vulnerability scan testing default account names.",
     "benign_on_call_engineer": "Benign: on-call IT engineer connects overnight from a hotel network.",
@@ -282,6 +283,19 @@ def _scenario_rapid_source_change(log, rng, day):
             Result.INFO, logon_type="VPN", scenario=label)
 
 
+def _scenario_unusual_logon(log, rng, day):
+    """Late-evening Remote Desktop session to the domain controller from the user's own internal address.
+
+    The source address is the usual one, so "new source" checks (R005) stay quiet. Only the account's
+    behavioural profile (R006: hour, target host and logon type are all new) shows that something changed.
+    """
+    label, member = "ambiguous_unusual_logon", STAFF_BY_NAME["c.evans"]
+    ts = day + timedelta(hours=23, minutes=12, seconds=48)
+    log.logon(ts, member.username, member.internal_ip, DOMAIN_CONTROLLER, True, "REMOTE_INTERACTIVE", scenario=label)
+    log.add(ts + timedelta(minutes=26), member.username, member.internal_ip, DOMAIN_CONTROLLER, EventType.LOGOFF,
+            Result.INFO, logon_type="REMOTE_INTERACTIVE", scenario=label)
+
+
 def _scenario_service_password_reset(log, rng, day):
     log.add(day + timedelta(hours=10, minutes=15), "svc_backup", HELPDESK_IP, DOMAIN_CONTROLLER,
             EventType.PASSWORD_CHANGE, Result.SUCCESS, scenario="benign_service_account_expired")
@@ -297,6 +311,7 @@ SCENARIO_SCHEDULE = [
     (7, _scenario_password_spray, []),
     (8, _scenario_credential_compromise, []),
     (9, _scenario_rapid_source_change, ["s.ahmed"]),
+    (10, _scenario_unusual_logon, []),
     (12, _scenario_service_password_reset, []),
 ]
 SERVICE_PASSWORD_EXPIRED_DAYS = {11, 12}  # backup job fails on these nights, fixed on day 12

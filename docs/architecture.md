@@ -18,7 +18,7 @@
 | `parsers.py` | Convert Linux auth.log, Windows .evtx / XML and Entra ID JSON to the lab schema | models, evtx |
 | `evtx.py` | Decode binary Windows event logs (.evtx) into Event XML, standard library only | - |
 | `detection/context.py` | Internal networks, business hours, service-account naming | config values |
-| `detection/rules.py` | R001-R005 logic and alert wording | models, context |
+| `detection/rules.py` | R001-R006 logic and alert wording | models, context |
 | `detection/playbooks.py` | Benign explanations, FP notes, steps, containment, limitations | - |
 | `detection/engine.py` | Rule registry, enable/disable, de-duplication, IDs | rules |
 | `detection/export.py` | Sigma / Splunk SPL / Sentinel KQL export built from the configuration | config values |

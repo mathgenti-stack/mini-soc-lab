@@ -23,17 +23,17 @@ It is a learning and portfolio project built to practise first-line (Tier 1) SOC
 | **Log generator** | 14 days of activity for 20 fictional staff plus service and scanner accounts, with planted scenarios and a separate ground-truth file. Reproducible with a seed. |
 | **Real log formats** | Reads Linux `auth.log`, Windows Security events (binary `.evtx` files or XML exports) and Entra ID sign-in JSON, converts them to the lab schema and runs the same rules. Fictional example files for each format are included. See [docs/real_log_formats.md](docs/real_log_formats.md). |
 | **Validation** | Rejects invalid timestamps, incomplete records, unknown event types and conflicting duplicate IDs; removes exact duplicates; reports all of it. |
-| **Detection engine** | Five rules (R001-R005) with thresholds in `config/detection_rules.json`. Each alert records trigger criteria, severity rationale, supporting event IDs, facts, hypotheses and a possible MITRE ATT&CK mapping. |
+| **Detection engine** | Six rules (R001-R006) with thresholds in `config/detection_rules.json`, from simple thresholds to a per-account behavioural baseline (R006: usual hours, networks, hosts, logon types and daily volume). Each alert records trigger criteria, severity rationale, supporting event IDs, facts, hypotheses and a possible MITRE ATT&CK mapping. |
 | **Dashboard** | KPIs, alerts by severity, a timeline of failed logons and alerts, an alert queue, a searchable event explorer, filters (date, user, IP, event type, severity), live threshold tuning, and a data-quality view. |
 | **Investigation** | For any alert: context checks, benign explanations, false-positive considerations, recommended steps, proposed containment, evidence timeline, evidence-based conclusion, limitations, status and analyst notes. Export to Markdown and CSV. |
 | **IP enrichment (offline)** | Geolocation, ASN and threat-intelligence lookups from local, fictional files in `data/enrichment/` - nothing is sent to the internet. Shown in investigations, reports and the Event Explorer, plus a distance check for rapid source changes. See [docs/enrichment.md](docs/enrichment.md). |
-| **Case correlation** | Related alerts (same account or source address, close in time) are grouped into cases, so one activity is triaged once. The 18 sample alerts become 9 cases, one per scenario. See [docs/correlation.md](docs/correlation.md). |
+| **Case correlation** | Related alerts (same account or source address, close in time) are grouped into cases, so one activity is triaged once. The 21 sample alerts become 10 cases, one per scenario. See [docs/correlation.md](docs/correlation.md). |
 | **Rule export** | Detection as code: the same rules exported as **Sigma**, **Splunk SPL** and **Microsoft Sentinel KQL**, built from the current thresholds. Available in the dashboard (with downloads) and from the CLI. See [docs/rule_export.md](docs/rule_export.md). |
 | **Triage store** | Incident status and analyst notes from the free investigation mode are saved in a local SQLite database (`case_store/triage.sqlite3`) with a full change history, shown in the alert queue and in cases, and used by the CLI report. See [docs/triage_store.md](docs/triage_store.md). |
 | **Languages** | The whole interface - menus, alerts, playbooks, training questions, feedback and the Markdown report - is available in English (default) and Brazilian Portuguese, switched from the sidebar without losing answers or progress. The language is kept in the link (`?lang=pt-BR`), so a shared URL opens in the same language. Texts live in `soc_lab/locales/*.json`; log data, IDs and CSV exports are never translated. |
 | **Training mode** | Practise triage before seeing the answer: 15 questions in five stages (understand, collect facts, add context, decide, communicate). The tool's analysis stays hidden until the analyst reveals it; each answer is then shown next to a reference and the ground-truth scenario, with a score: an automatic checklist of the key facts each answer should mention (see [docs/training_score.md](docs/training_score.md)). Answers are saved locally in `training_answers/` and included in the exported report. |
 | **CLI** | `generate`, `analyse`, `report`, `triage`, `convert`, `export-rules` and `lookup-ip` commands for working without the dashboard. |
-| **Tests** | 226 pytest tests covering rules, thresholds, validation, real log formats, metrics, filters, reporting, training mode, translations, rule export, case correlation, IP enrichment, the triage store, the CLI and dashboard tests. |
+| **Tests** | 258 pytest tests covering rules, thresholds, validation, real log formats, metrics, filters, reporting, training mode, translations, rule export, case correlation, IP enrichment, the triage store, the CLI and dashboard tests. |
 
 ## Technology stack
 
@@ -47,7 +47,7 @@ No database, no cloud services and no API keys.
 ## Architecture
 
 ```
-CSV logs ──> log_loader (validate) ──> detection engine (R001-R005) ──> alerts
+CSV logs ──> log_loader (validate) ──> detection engine (R001-R006) ──> alerts
                     │                          ▲                          │
                     │               config/detection_rules.json           │
                     ▼                                                     ▼
@@ -71,7 +71,7 @@ mini-soc-lab/
 │   ├── config.py              Configuration loading and validation
 │   ├── detection/
 │   │   ├── context.py         Internal networks, business hours, service accounts
-│   │   ├── rules.py           The five detection rules (pure functions)
+│   │   ├── rules.py           The six detection rules (pure functions)
 │   │   ├── playbooks.py       Analyst guidance per rule
 │   │   ├── export.py          Sigma / Splunk SPL / Sentinel KQL export
 │   │   └── engine.py          Runs enabled rules, assigns alert IDs
@@ -157,18 +157,19 @@ python -m soc_lab.cli lookup-ip 203.0.113.88 203.0.113.120
 python -m pytest
 ```
 
-Expected result: `226 passed`. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
+Expected result: `258 passed`. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
 
 ## Sample detection scenarios
 
-With the bundled dataset (`seed 42`) the engine produces **18 alerts** (1 Critical, 5 High, 12 Medium). Each planted scenario is detected, and normal activity on its own produces no alerts (both are checked by tests).
+With the bundled dataset (`seed 42`) the engine produces **21 alerts** (1 Critical, 7 High, 13 Medium). Each planted scenario is detected, and normal activity on its own produces no alerts (both are checked by tests).
 
 | Scenario (ground truth) | Alerts raised | What an analyst should conclude |
 | --- | --- | --- |
 | Simulated brute force against `m.jones` from 203.0.113.45, ending in lockout | R001 High, R003 High/Medium | Failed guessing; no success observed |
-| Simulated password spray from 203.0.113.88; `l.taylor` succeeds | **R004 Critical**, R003 High | Possible compromise of `l.taylor` - escalate |
-| Simulated credential compromise of `r.khan`: 8 failures then evening VPN success | R001 High, R002 High, R005 Medium | Possible compromise - verify with user, escalate |
+| Simulated password spray from 203.0.113.88; `l.taylor` succeeds | **R004 Critical**, R003 High, R006 High (first VPN logon ever for `l.taylor`) | Possible compromise of `l.taylor` - escalate |
+| Simulated credential compromise of `r.khan`: 8 failures then evening VPN success | R001 High, R002 High, R006 High, R005 Medium | Possible compromise - verify with user, escalate |
 | Two VPN logons for `s.ahmed` from different external IPs 7 minutes apart | R005 Medium | Ambiguous - verify with user |
+| `c.evans` opens Remote Desktop to the domain controller at 23:12 from their usual workstation | R006 Medium (hour, host and logon type all new) | Ambiguous - check change tickets, ask user and IT |
 | `e.wilson` forgot a recently changed password, locked out, unlocked by service desk | R001 Medium, R005 Medium | Likely benign - confirm ticket |
 | Authorised internal vulnerability scan from 10.10.99.5 | R004 Medium, R003 Medium | Likely benign - confirm scan schedule |
 | On-call engineer `d.brown` connects at 02:31 from a hotel | R005 Medium | Likely benign - confirm on-call rota |
@@ -196,7 +197,9 @@ More detail: [docs/limitations_and_false_positives.md](docs/limitations_and_fals
 
 ## Future improvements
 
-- Per-user behavioural baselines that go beyond "seen before".
+- Unify account names across sources (`j.smith`, `EXAMPLE\j.smith` and `j.smith@example.com` are three accounts today).
+- Model UK daylight saving time and shift patterns instead of fixed UTC business hours.
+- Add another log source (for example Sysmon process events or proxy logs) so alerts can be followed beyond the logon.
 
 ## Ethical and safety considerations
 
