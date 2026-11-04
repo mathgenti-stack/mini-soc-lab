@@ -1,10 +1,11 @@
 # Real-world log formats
 
-Besides its own CSV schema ([log_format.md](log_format.md)), the lab reads three formats that SOC analysts meet every day. `soc_lab/parsers.py` converts each one into the lab schema. The converted events then go through the **same validation and the same rules** as any CSV. Only the Python standard library is used.
+Besides its own CSV schema ([log_format.md](log_format.md)), the lab reads four formats that SOC analysts meet every day. `soc_lab/parsers.py` converts each one into the lab schema. The converted events then go through the **same validation and the same rules** as any CSV. Only the Python standard library is used.
 
 | Format | Typical source | Option |
 | --- | --- | --- |
 | Linux `auth.log` | `/var/log/auth.log` (Debian/Ubuntu) or `/var/log/secure` (RHEL) | `linux_auth` |
+| Windows event log file (binary) | A copy of `C:\Windows\System32\winevt\Logs\Security.evtx`, Event Viewer → *Save All Events As…* → `.evtx`, or `wevtutil epl Security out.evtx` | `windows_evtx` |
 | Windows Security events (XML) | Event Viewer → *Save Selected Events…* → XML, or `Get-WinEvent -LogName Security \| ForEach-Object { $_.ToXml() }` | `windows_xml` |
 | Microsoft Entra ID sign-ins (JSON) | Entra admin center → Sign-in logs → *Download* → JSON, or the Graph API `auditLogs/signIns` response | `entra_json` |
 
@@ -17,7 +18,7 @@ python -m soc_lab.cli analyse --input data/examples/entra_signins.json          
 
 In the dashboard, choose **Real-format log examples**, or **Upload a log file** and pick a format. The **Data Quality** tab shows how many records were read, converted and skipped. **Download converted CSV** saves the result in the lab schema.
 
-Binary `.evtx` files are not supported: reading them needs a third-party library, and this project uses only the standard library. Export the events to XML first.
+Binary `.evtx` files are read directly by `soc_lab/evtx.py`, which also uses only the standard library (see [Windows event log files](#windows-event-log-files-evtx)).
 
 ## Linux auth.log
 
@@ -53,6 +54,21 @@ Binary `.evtx` files are not supported: reading them needs a third-party library
 - XML with `<!DOCTYPE>` or `<!ENTITY>` declarations is refused: event exports never contain them, and they are a known way to attack XML parsers.
 - UTF-16 files (common from Event Viewer and PowerShell) are read correctly.
 
+## Windows event log files (.evtx)
+
+`.evtx` is the format Windows itself uses to store event logs. `soc_lab/evtx.py` decodes it without third-party libraries, so it also works in the in-browser build:
+
+1. The file is a 4 KiB header followed by 64 KiB **chunks**. Each chunk holds **records**, and each record holds one event as *binary XML* (BinXML).
+2. BinXML avoids repeating itself. Element names and **templates** (the structure of an event, for example "4625 with these `Data` fields") are stored once per chunk and referenced by offset. Each record carries only its own **typed values**: time as FILETIME, SIDs, numbers, hex status codes and strings.
+3. Each record is turned back into the same `<Event>` XML that Event Viewer exports. It then goes through the **Windows XML** conversion above, so the mapping, the skipped records and the rules are identical. The example `windows_security.evtx` produces exactly the same events as `windows_security.xml`.
+
+Robustness:
+- Damaged data is counted, never guessed. A record that cannot be decoded is counted as *Record could not be read*. A chunk with a broken header is counted once as *Damaged .evtx chunk*, because its records cannot be reached. The rest of the file is still read. Tests flip random bytes to check that the reader never crashes.
+- Every record returned is checked to be well-formed XML, and element names must be plain ASCII names, so crafted names cannot inject markup.
+- The reader was checked against `wevtutil` on real Windows 11 logs (Application, System, Setup and PowerShell, about 69,000 records). The decoded XML matched on every record.
+
+Limits: only the records in the file are read. Deleted records and leftovers in unused chunk space are not recovered (that is forensic carving, a different job). Checksums are not verified, so a record with a bad checksum but readable content is still used. Exporting the Security log needs administrator rights: run `wevtutil epl Security C:\Temp\security.evtx` from an elevated prompt.
+
 ## Entra ID sign-ins JSON
 
 - Accepts a list of sign-ins or the Graph API object (`{"value": [...]}`).
@@ -69,6 +85,7 @@ Binary `.evtx` files are not supported: reading them needs a third-party library
 | --- | --- | --- |
 | `linux_auth.log` | SSH brute force from 203.0.113.45 against `root` and default account names; `m.jones` mistypes three times from home, then logs on and changes the password | R001, R003, R004, R002 (all High) |
 | `windows_security.xml` | `j.smith` forgets a password: six failures, lockout, unlock by the service desk (`h.wright`), success, password change | R001, R002, R005 lockout then success (all Medium) |
+| `windows_security.evtx` | The same events as `windows_security.xml`, as a binary event log (built by `tests/evtx_writer.py`) | Same as the XML file |
 | `entra_signins.json` | Password spray from 203.0.113.88 against eight accounts, then a successful sign-in for `l.taylor`; one MFA interruption | R004 **Critical** |
 
 ## Limitations

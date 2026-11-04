@@ -36,7 +36,7 @@ SEVERITY_COLOURS = {"Critical": "#d03b3b", "High": "#ec835a", "Medium": "#fab219
 RESULT_COLOURS = {"SUCCESS": "#2a78d6", "FAILURE": "#eb6834", "INFO": "#8a8984"}
 DATA_SOURCES = ["sample", "generate", "examples", "upload"]
 EXAMPLES_DIR = Path(__file__).parent / "data" / "examples"
-EXAMPLE_FILES = ["linux_auth.log", "windows_security.xml", "entra_signins.json"]
+EXAMPLE_FILES = ["linux_auth.log", "windows_security.xml", "windows_security.evtx", "entra_signins.json"]
 EXAMPLE_YEAR = 2026  # the classic syslog lines in linux_auth.log have no year
 TAB_IDS = ["overview", "alerts", "cases", "events", "investigation", "quality", "export", "about"]
 
@@ -148,11 +148,11 @@ elif source_choice == "generate":
                                mime="text/csv", key="download_generated")
 elif source_choice == "examples":
     example = st.sidebar.selectbox(T("ui.source.example_label"), EXAMPLE_FILES, key="example_file",
-                                   format_func=lambda name: T(f"ui.source.example.{Path(name).stem}"))
+                                   format_func=lambda name: T(f"ui.source.example.{name.replace('.', '_')}"))
     raw_bytes, source_name, log_format, log_year = (EXAMPLES_DIR / example).read_bytes(), example, "auto", EXAMPLE_YEAR
     ground_truth = {}
 else:
-    upload = st.sidebar.file_uploader(T("ui.source.upload_label"), type=["csv", "log", "txt", "xml", "json"],
+    upload = st.sidebar.file_uploader(T("ui.source.upload_label"), type=["csv", "log", "txt", "xml", "evtx", "json"],
                                       help=T("ui.source.upload_help"), key="upload_csv")
     log_format = st.sidebar.selectbox(T("ui.source.format"), ["auto", *LOG_FORMATS], key="upload_format",
                                       format_func=lambda fmt: T(f"ui.format.{fmt}"))

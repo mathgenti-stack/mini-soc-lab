@@ -5,6 +5,7 @@ Supported formats (all parsed with the Python standard library):
 - linux_auth   Linux /var/log/auth.log (OpenSSH, pam_faillock, passwd), syslog or RFC 3339 timestamps
 - windows_xml  Windows Security events saved as XML from Event Viewer ("Save Selected Events... > XML")
                or exported with  Get-WinEvent ... | ForEach-Object { $_.ToXml() }
+- windows_evtx Binary Windows event log files (.evtx), decoded by soc_lab/evtx.py into the same XML
 - entra_json   Microsoft Entra ID sign-in logs as JSON (portal download or the Graph API "value" array)
 
 Every source record becomes at most one lab event (see docs/log_format.md for the schema).
@@ -24,13 +25,14 @@ from datetime import datetime, timezone
 
 import pandas as pd
 
+from . import evtx
 from .i18n import Msg
 from .models import ALL_COLUMNS, EVENT_CODES, EventType, Result
 
-FORMATS = ["lab_csv", "linux_auth", "windows_xml", "entra_json"]
+FORMATS = ["lab_csv", "linux_auth", "windows_xml", "windows_evtx", "entra_json"]
 # Fixed English codes stored with the skip counts; "conversion.skip.<code>" translates them.
 SKIP_REASONS = ("not_auth_event", "duplicate_ssh_line", "machine_account", "anonymous_logon", "unsupported_event_id",
-                "mfa_interrupt", "invalid_record")
+                "mfa_interrupt", "invalid_record", "damaged_chunk")
 
 
 @dataclass
@@ -54,6 +56,8 @@ class ConversionError(ValueError):
 
 def detect_format(data: bytes, filename: str = "") -> str:
     """Guess the format from the file name and the first bytes."""
+    if evtx.is_evtx(data) or filename.lower().endswith(".evtx"):
+        return "windows_evtx"
     head = data[:4096].decode("utf-8", errors="ignore").lstrip("﻿ \t\r\n")
     name = filename.lower()
     if name.endswith(".xml") or head.startswith("<"):
@@ -73,6 +77,8 @@ def convert(data: bytes, fmt: str = "auto", filename: str = "", year: int | None
     fmt = detect_format(data, filename) if fmt == "auto" else fmt
     if fmt == "lab_csv":
         return ConversionResult(fmt=fmt)  # already in the lab schema; load_events reads it directly
+    if fmt == "windows_evtx":
+        return _convert_evtx(data)
     try:
         text = data.decode("utf-8-sig")
     except UnicodeDecodeError:
@@ -83,9 +89,12 @@ def convert(data: bytes, fmt: str = "auto", filename: str = "", year: int | None
     result = ConversionResult(fmt=fmt)
     parser = {"linux_auth": _parse_linux_auth, "windows_xml": _parse_windows_xml, "entra_json": _parse_entra}[fmt]
     rows = parser(text, result, year or datetime.now(timezone.utc).year)
-    frame = pd.DataFrame(rows, columns=list(ALL_COLUMNS)).fillna("").astype(str)
-    result.events = frame
+    result.events = _frame(rows)
     return result
+
+
+def _frame(rows: list[dict]) -> pd.DataFrame:
+    return pd.DataFrame(rows, columns=list(ALL_COLUMNS)).fillna("").astype(str)
 
 
 def _event(event_id, ts: datetime, username, source_ip, event_type, result, hostname="", failure_reason="",
@@ -197,10 +206,13 @@ def _parse_windows_xml(text: str, result: ConversionResult, year: int) -> list[d
         root = ET.fromstring(f"<Events>{text}</Events>")
     except ET.ParseError as exc:
         raise ConversionError(Msg("conversion.error.xml", detail=str(exc))) from exc
+    return _windows_rows((element for element in root.iter() if _local(element.tag) == "Event"), result)
+
+
+def _windows_rows(events, result: ConversionResult) -> list[dict]:
+    """Convert <Event> elements (from an XML export or decoded from .evtx) into lab events."""
     rows = []
-    for element in root.iter():
-        if _local(element.tag) != "Event":
-            continue
+    for element in events:
         result.records_read += 1
         system = {_local(child.tag): child for child in next((c for c in element if _local(c.tag) == "System"), [])}
         data = {item.get("Name"): (item.text or "").strip() for item in element.iter()
@@ -234,6 +246,29 @@ def _parse_windows_xml(text: str, result: ConversionResult, year: int) -> list[d
             event_code,
         ))
     return rows
+
+
+def _convert_evtx(data: bytes) -> ConversionResult:
+    """Binary .evtx: each record is decoded to <Event> XML, then converted exactly like an XML export."""
+    try:
+        content = evtx.read_evtx(data)
+    except evtx.EvtxError as exc:
+        raise ConversionError(Msg("conversion.error.evtx", detail=str(exc))) from exc
+    result = ConversionResult(fmt="windows_evtx")
+    elements = []
+    for record in content.records:
+        try:
+            elements.append(ET.fromstring(record))
+        except ET.ParseError:
+            result.records_read += 1
+            result.skipped["invalid_record"] += 1
+    rows = _windows_rows(elements, result)
+    # Damaged records and chunks are counted so the Data Quality tab shows that something could not be read.
+    result.records_read += content.bad_records + content.bad_chunks
+    result.skipped.update({key: count for key, count in (("invalid_record", content.bad_records),
+                                                         ("damaged_chunk", content.bad_chunks)) if count})
+    result.events = _frame(rows)
+    return result
 
 
 # ---------------------------------------------------------------------------

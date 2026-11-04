@@ -1,4 +1,4 @@
-"""Real-world log formats: Linux auth.log, Windows Security XML and Entra ID sign-in JSON."""
+"""Real-world log formats: Linux auth.log, Windows Security XML and .evtx, and Entra ID sign-in JSON."""
 
 import ipaddress
 import json
@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from soc_lab.cli import main
+from soc_lab.evtx import read_evtx
 from soc_lab.config import load_config
 from soc_lab.detection import run_detection
 from soc_lab.i18n import LANGUAGES, t
@@ -41,7 +42,7 @@ def win_event(event_id, data, time="2026-10-21T09:10:00.1234567Z", record=1, com
 # Format detection
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize("name, expected", [("linux_auth.log", "linux_auth"), ("windows_security.xml", "windows_xml"),
-                                            ("entra_signins.json", "entra_json")])
+                                            ("windows_security.evtx", "windows_evtx"), ("entra_signins.json", "entra_json")])
 def test_detects_the_example_formats(name, expected):
     data = (EXAMPLES / name).read_bytes()
     assert detect_format(data, name) == expected
@@ -181,6 +182,7 @@ def test_entra_bad_json_is_refused():
 @pytest.mark.parametrize("name, expected_alerts", [
     ("linux_auth.log", [("R001", "High"), ("R003", "High"), ("R004", "High"), ("R002", "High")]),
     ("windows_security.xml", [("R001", "Medium"), ("R002", "Medium"), ("R005", "Medium")]),
+    ("windows_security.evtx", [("R001", "Medium"), ("R002", "Medium"), ("R005", "Medium")]),
     ("entra_signins.json", [("R004", "Critical")]),
 ])
 def test_example_files_raise_the_expected_alerts(name, expected_alerts):
@@ -201,7 +203,8 @@ def test_example_conversion_counts():
 def test_example_files_are_fictional():
     allowed = [ipaddress.ip_network(n) for n in ("10.0.0.0/8", "192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24")]
     for path in EXAMPLES.iterdir():
-        text = path.read_text(encoding="utf-8")
+        data = path.read_bytes()
+        text = "".join(read_evtx(data).records) if path.suffix == ".evtx" else data.decode("utf-8")
         addresses = {ipaddress.ip_address(ip) for ip in re.findall(r"\b\d{1,3}(?:\.\d{1,3}){3}\b", text)}
         assert addresses and all(any(ip in net for net in allowed) for ip in addresses), path.name
         domains = set(re.findall(r"\w@([\w.-]+)", text)) | set(re.findall(r"\.(example\.\w+)", text))
@@ -237,7 +240,7 @@ def test_dashboard_examples(app, lang):
     app.run()
     app.segmented_control(key="lang").set_value(lang).run()
     app.radio(key="data_source").set_value("examples").run()
-    expected = {"linux_auth.log": 4, "windows_security.xml": 3, "entra_signins.json": 1}
+    expected = {"linux_auth.log": 4, "windows_security.xml": 3, "windows_security.evtx": 3, "entra_signins.json": 1}
     for name, alert_count in expected.items():
         app.selectbox(key="example_file").set_value(name).run()
         assert not app.exception, name

@@ -21,7 +21,7 @@ It is a learning and portfolio project built to practise first-line (Tier 1) SOC
 | Area | What it does |
 | --- | --- |
 | **Log generator** | 14 days of activity for 20 fictional staff plus service and scanner accounts, with planted scenarios and a separate ground-truth file. Reproducible with a seed. |
-| **Real log formats** | Reads Linux `auth.log`, Windows Security events exported as XML and Entra ID sign-in JSON, converts them to the lab schema and runs the same rules. Fictional example files for each format are included. See [docs/real_log_formats.md](docs/real_log_formats.md). |
+| **Real log formats** | Reads Linux `auth.log`, Windows Security events (binary `.evtx` files or XML exports) and Entra ID sign-in JSON, converts them to the lab schema and runs the same rules. Fictional example files for each format are included. See [docs/real_log_formats.md](docs/real_log_formats.md). |
 | **Validation** | Rejects invalid timestamps, incomplete records, unknown event types and conflicting duplicate IDs; removes exact duplicates; reports all of it. |
 | **Detection engine** | Five rules (R001-R005) with thresholds in `config/detection_rules.json`. Each alert records trigger criteria, severity rationale, supporting event IDs, facts, hypotheses and a possible MITRE ATT&CK mapping. |
 | **Dashboard** | KPIs, alerts by severity, a timeline of failed logons and alerts, an alert queue, a searchable event explorer, filters (date, user, IP, event type, severity), live threshold tuning, and a data-quality view. |
@@ -62,11 +62,12 @@ mini-soc-lab/
 ├── config/detection_rules.json  Detection thresholds and environment settings
 ├── data/                      Sample synthetic dataset + ground-truth labels
 │   ├── enrichment/            Fictional GeoIP / ASN and threat-intelligence files
-│   └── examples/              Fictional auth.log, Windows XML and Entra ID JSON files
+│   └── examples/              Fictional auth.log, Windows .evtx / XML and Entra ID JSON files
 ├── soc_lab/
 │   ├── log_generator.py       Synthetic event and scenario generator
 │   ├── log_loader.py          CSV loading and validation
-│   ├── parsers.py             Linux auth.log / Windows XML / Entra ID JSON to the lab schema
+│   ├── parsers.py             Linux auth.log / Windows .evtx and XML / Entra ID JSON to the lab schema
+│   ├── evtx.py                Binary .evtx reader (standard library only)
 │   ├── config.py              Configuration loading and validation
 │   ├── detection/
 │   │   ├── context.py         Internal networks, business hours, service accounts
@@ -195,7 +196,6 @@ More detail: [docs/limitations_and_false_positives.md](docs/limitations_and_fals
 
 ## Future improvements
 
-- Read binary Windows `.evtx` files directly (today they must be exported to XML first).
 - Per-user behavioural baselines that go beyond "seen before".
 
 ## Ethical and safety considerations
@@ -211,7 +211,7 @@ More detail: [docs/limitations_and_false_positives.md](docs/limitations_and_fals
 | --- | --- |
 | [docs/architecture.md](docs/architecture.md) | Components, data flow, design decisions |
 | [docs/log_format.md](docs/log_format.md) | Log schema, field values, validation rules, how to generate data |
-| [docs/real_log_formats.md](docs/real_log_formats.md) | Linux auth.log, Windows XML and Entra ID JSON: mapping, skipped records, examples |
+| [docs/real_log_formats.md](docs/real_log_formats.md) | Linux auth.log, Windows .evtx / XML and Entra ID JSON: mapping, skipped records, examples |
 | [docs/detection_rules.md](docs/detection_rules.md) | Every rule: criteria, parameters, severity logic, limitations |
 | [docs/limitations_and_false_positives.md](docs/limitations_and_false_positives.md) | Known gaps and false-positive handling |
 | [docs/dashboard_guide.md](docs/dashboard_guide.md) | Dashboard walkthrough and example uses |
