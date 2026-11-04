@@ -30,6 +30,7 @@
 | `enrichment.py` | Offline geolocation, ASN and threat-intelligence lookups | data/enrichment files |
 | `challenges.py` | Terminal challenges (data/terminal/challenges.json): load, validate, check answers, progress | i18n |
 | `terminal.py` | Build, start and stop the practice container (bash and PowerShell) through the `docker` CLI; mounts `evtx.py` for the lab `Get-WinEvent` | - |
+| `sim/` | Simulated terminal in pure Python (runs in the browser build too): in-memory files (`core`), bash with small awk and jq, PowerShell (parser, interpreter, values, table/list formatting), CMD | evtx |
 | `cli.py` | Command-line entry point | all of the above |
 | `streamlit_app.py` | Dashboard UI | all of the above |
 

@@ -1,26 +1,54 @@
-# Terminal: practise on a real shell
+# Terminal: practise on a shell
 
-The **Terminal** tab works like a TryHackMe room. On one side is a list of challenges. On the other is a real shell where you investigate **this lab's own logs** with the commands an analyst uses every day. Choose the shell at the top of the tab:
+The **Terminal** tab works like a TryHackMe room. On one side is a list of challenges. On the other is a shell where you investigate **this lab's own logs** with the commands an analyst uses every day. Choose the shell at the top of the tab:
 
 - **Linux (bash)**: `grep`, `awk`, `sort | uniq -c`, `cut`, `jq`.
 - **PowerShell**: `Import-Csv`, `Where-Object`, `Group-Object`, `[xml]`, `ConvertFrom-Json` and `Get-WinEvent`, for Windows security events (4624, 4625, 4740, 4767).
- You type the answer in the dashboard and it is checked at once. Hints and the solution, with an explanation of why it matters, are there when you need them.
+- **CMD (Windows)**: `type`, `find`, `findstr`, `for /f`, the Command Prompt that is still on every Windows server.
 
-The tab is built in three phases. The challenges live in one file, `data/terminal/challenges.json`, shared by all three.
+You type the answer in the dashboard and it is checked at once. Hints and the solution, with an explanation of why it matters, are there when you need them.
+
+There are two kinds of terminal:
+
+- **Simulated** (the default): written in Python, it runs inside the page itself. It works everywhere the dashboard works: on a computer without Docker, on the Cloudflare site and on a phone. It has the three shells.
+- **Real (Docker)**: a real Debian Linux with bash and PowerShell 7, in a container on your own computer. Choose *Real (Docker)* above the terminal. It is not offered on the website or for CMD.
+
+The tab was built in three phases. The challenges live in one file, `data/terminal/challenges.json`, shared by all of them.
 
 | Phase | Terminal | Where it runs | Status |
 | --- | --- | --- | --- |
 | 1 | Linux (bash) in a Docker container, shown in the page by `ttyd` | Your own computer, with Docker | **Done** |
 | 2 | PowerShell 7 in the same Linux container, for Windows events (4624, 4625, 4740) | Your own computer, with Docker | **Done** |
-| 3 | Simulated Linux, PowerShell and CMD terminal written in JavaScript | Any browser, mobile and the Cloudflare site, no server | Planned |
+| 3 | Simulated bash, PowerShell and CMD, in Python (`soc_lab/sim`) | Anywhere: computer, phone, the Cloudflare site, no server | **Done** |
 
-## Setting it up (Windows)
+## The simulated terminal
+
+Type a command in the box under the screen and press Enter. `help` (bash and CMD) or `Get-Help` (PowerShell) lists the commands it knows. *Reset terminal* starts a fresh session.
+
+It is a simulation, written for the lab in `soc_lab/sim/` with the Python standard library only, so it also runs in the browser build (stlite/Pyodide):
+
+| Shell | Module | What it does |
+| --- | --- | --- |
+| bash | `bash.py`, `awk.py`, `jq.py`, `regex.py` | Quotes, `$VAR`, `$(...)`, globs, pipes, `< > >>`, `; && \|\|`; `ls cd cat head tail wc grep sort uniq cut tr sed awk jq file tree echo printf` and more, with GNU's output format. `awk` and `jq` are small versions of the real ones. |
+| PowerShell | `ps_parser.py`, `powershell.py`, `ps_values.py`, `ps_format.py` | A parser and an interpreter where commands pass **objects**: about fifty cmdlets (`Import-Csv`, `Where-Object`, `Select-Object`, `Group-Object`, `Get-WinEvent`...), `-eq -like -match`, `$_`, script blocks, `[xml]`, hashtables, methods. Results print as tables and lists like PowerShell 7. Aliases (`ls`, `cat`, `where`, `%`) work as on Windows, and `grep`, `wc`... run as native programs, as in PowerShell on Linux. |
+| CMD | `cmd.py` | `C:\Users\analyst`, `%VARIABLES%`, `^`, pipes, `& && \|\|`, and `dir cd type more find findstr sort echo set for /f if tree` and more. Paths and commands ignore case. |
+
+How close it is, and how that is checked:
+
+- Every challenge solution runs in the simulator (`tests/test_sim_*.py`).
+- A list of everyday commands is run in **both** the simulator and the real shell, and the outputs must be identical: bash and PowerShell against the Docker container, CMD against `cmd.exe` on Windows. These tests are skipped when Docker or Windows is not available.
+- What it does not do: processes, the network, editors (`vim`, `nano`), job control, scripts and functions, `switch`, `try`, XPath. These commands answer with a clear *not supported in the simulated terminal* instead of failing silently. Very long outputs are cut at 2,000 lines.
+- The logs are read-only, as in the container. You can create files in the home folder (`echo x > notes.txt`, `Export-Csv`); they live in memory until you reset or leave the page.
+
+## The real terminal (Docker)
+
+### Setting it up (Windows)
 
 Docker Desktop runs Linux containers through WSL 2, which also works on Windows Home:
 
 1. Install WSL once: open PowerShell **as administrator**, run `wsl --install` and restart the computer.
 2. Install and open **Docker Desktop**, and wait until it shows *Engine running*.
-3. In the dashboard, open **Terminal** and press **Start terminal**. The first start builds the image from `terminal/Dockerfile` (Debian with PowerShell, about 500 MB, a few minutes, needs the internet once). Later starts take seconds.
+3. In the dashboard, open **Terminal**, choose *Real (Docker)* and press **Start terminal**. The first start builds the image from `terminal/Dockerfile` (Debian with PowerShell, about 500 MB, a few minutes, needs the internet once). Later starts take seconds.
 
 From the command line:
 
@@ -32,12 +60,12 @@ python -m soc_lab.cli terminal stop
 
 The terminal is at http://localhost:7681 (bash) and http://localhost:7681/?arg=powershell (PowerShell). To use another port, set `SOC_LAB_TERMINAL_PORT` before starting the dashboard. You can also type `pwsh` in bash, and `exit` to go back.
 
-## What is inside
+### What is inside
 
 - Debian with `bash`, `grep`, `gawk`, `sed`, `less`, `jq`, `file`, `tree`, `nano` and `vim`.
 - **PowerShell 7.6** (LTS), the official Linux build, pinned to a version and checked against its published SHA-256.
 - A lab version of **`Get-WinEvent`** (see below), and `python3`, which runs the `.evtx` reader behind it.
-- The lab's files, in `~/logs`, **read-only**:
+- The lab's files, in `~/logs`, **read-only** (the simulated terminal has the same files):
 
 | In the terminal | Lab file |
 | --- | --- |
@@ -51,11 +79,11 @@ The files are mounted when the container starts, so the terminal always shows th
 
 On Windows, `ls -l logs` shows the files as `rwxrwxrwx`. The Windows file system does not store Linux permissions, so Docker shows everything as allowed. The mount itself is still read-only: `touch logs/linux_auth.log` fails with *Read-only file system*, and the tests check this.
 
-## PowerShell on Linux, and `Get-WinEvent`
+### PowerShell on Linux, and `Get-WinEvent`
 
 Windows Home cannot run Windows containers, so PowerShell runs in the same Linux container. Almost everything works as on Windows: `Import-Csv`, `Where-Object`, `Group-Object`, `Sort-Object`, `Select-Object`, `[xml]`, `ConvertFrom-Json`, `Get-Member`.
 
-The exception is **`Get-WinEvent`**, which exists only in PowerShell on Windows. The terminal has a **lab version** of it (module `terminal/SocLab`). It reads `.evtx` files with the dashboard's own reader (`soc_lab/evtx.py`, mounted read-only into the container) and returns objects shaped like the real ones (`TimeCreated`, `Id`, `LevelDisplayName`, `Message`, `RecordId`, `Properties`, `ToXml()`), newest first:
+The exception is **`Get-WinEvent`**, which exists only in PowerShell on Windows. The terminal has a **lab version** of it (module `terminal/SocLab`; the simulated PowerShell has the same one). It reads `.evtx` files with the dashboard's own reader (`soc_lab/evtx.py`, mounted read-only into the container) and returns objects shaped like the real ones (`TimeCreated`, `Id`, `LevelDisplayName`, `Message`, `RecordId`, `Properties`, `ToXml()`), newest first:
 
 ```powershell
 Get-WinEvent -Path ~/logs/windows_security.evtx -MaxEvents 5
@@ -70,7 +98,7 @@ Get-WinEvent -FilterHashtable @{ Path = "$HOME/logs/windows_security.evtx"; Targ
 
 `Message` is a one-line description followed by the event data, not the full Windows text. On Windows, the same filters read the live log with `@{ LogName = 'Security'; Id = 4625 }`.
 
-## Safety
+### Safety
 
 The container is a practice box on a personal computer, and it is locked down accordingly (`soc_lab/terminal.py`):
 
@@ -85,13 +113,15 @@ Limits: the container can still reach the internet (publishing a port needs a ne
 
 ## The challenges
 
-There are 14 Linux challenges and 14 PowerShell challenges.
+There are 36 challenges: 14 for Linux, 14 for PowerShell and 8 for CMD.
 
 **Linux**, in four levels: **basics** (`wc`, `head`), **searching and pipes** (`grep`, `awk`, `sort | uniq -c`), **investigation on the two-week dataset** (CSV columns with `awk -F,` and `cut`), and **other formats** (Entra ID JSON with `jq`, Windows XML). Each one follows a scenario the dashboard also detects: the SSH brute force, the password spray that found `l.taylor`, and `c.evans`'s unusual Remote Desktop logon (R006).
 
 **PowerShell**, in four levels: **objects** (`Get-ChildItem`, `Import-Csv`, `Get-Member`), **filtering and grouping** (`Where-Object`, `Group-Object`, the noisy service account with an expired password), **investigation** (the two lockouts 4740 compared, the unlock 4767 in the Windows XML, the time the password spray got in), and **`Get-WinEvent`** on the `.evtx` file and Entra ID JSON with `ConvertFrom-Json`.
 
-Progress is saved per shell, in `training_answers/terminal_linux.json` and `training_answers/terminal_powershell.json`. A challenge counts as solved only when answered. Showing the solution marks it 👁️ but does not count it as solved.
+**CMD**, in four levels: counting with `find /c` (and the `find /c /v ""` trick that counts lines), case with `/i`, several words at once with `findstr`, CSV values with their commas, chains of `find` as an AND, a user's events in the Windows XML, and cutting a line into words with `for /f`.
+
+Progress is saved per shell, in `training_answers/terminal_<shell>.json` (`linux`, `powershell`, `cmd`). A challenge counts as solved only when answered. Showing the solution marks it 👁️ but does not count it as solved.
 
 ### Format of `challenges.json`
 
@@ -110,7 +140,7 @@ Progress is saved per shell, in `training_answers/terminal_linux.json` and `trai
 }
 ```
 
-- Texts are inside the file, in every language, so phase 3 (JavaScript) can use it without the Python translation files.
+- Texts are inside the file, in every language, so any terminal can use it without the Python translation files.
 - `answers` lists every accepted answer. Case, accents, surrounding quotes and extra spaces are ignored.
-- `solution` must print exactly the answer. With Docker running, `tests/test_terminal.py` runs every solution in the real container (in bash or PowerShell, by environment) and checks it. Without Docker, it checks every answer against the lab data in Python. If the logs or the generator change, these tests say which answers to update.
-- Environments today: `linux` and `powershell`. Phase 3 adds `cmd`. One container serves both shells, so it mounts the files of every environment.
+- `solution` must print exactly the answer. `tests/test_terminal.py` checks every answer against the lab data in Python; the simulator tests run every solution in the simulated shell; with Docker running, the bash and PowerShell solutions also run in the real container. If the logs or the generator change, these tests say which answers to update.
+- Environments: `linux`, `powershell` and `cmd`. One container serves bash and PowerShell, so it mounts the files of every environment.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import os
 from datetime import datetime, timezone
@@ -19,7 +20,7 @@ from soc_lab.detection import run_detection
 from soc_lab.enrichment import display_rows, load_enrichment
 from soc_lab.detection.export import CODE_LANGUAGES, FIELD_MAPPING, FORMAT_NAMES, FORMATS, export_rules, export_zip
 from soc_lab.filters import filter_alerts, filter_events
-from soc_lab import challenges, scoring, terminal, training
+from soc_lab import challenges, scoring, sim, terminal, training
 from soc_lab.i18n import DEFAULT_LANGUAGE, LANGUAGES, t, tr
 from soc_lab.log_generator import GeneratorSettings, generate_csv_text, generate_events
 from soc_lab.log_loader import LogFileError, load_events, rejection_reason_msg
@@ -39,7 +40,11 @@ EXAMPLES_DIR = Path(__file__).parent / "data" / "examples"
 EXAMPLE_FILES = ["linux_auth.log", "windows_security.xml", "windows_security.evtx", "entra_signins.json"]
 EXAMPLE_YEAR = 2026  # the classic syslog lines in linux_auth.log have no year
 TAB_IDS = ["overview", "alerts", "cases", "events", "investigation", "quality", "export", "terminal", "about"]
-TERMINAL_CODE_LANGUAGE = {"linux": "bash", "powershell": "powershell"}  # how st.code highlights solutions
+TERMINAL_CODE_LANGUAGE = {"linux": "bash", "powershell": "powershell", "cmd": "batch"}  # st.code highlighting
+SIM_HISTORY_LIMIT = 150  # commands kept on the simulated terminal's screen
+SIM_STYLE = ("background:#0f1419;color:#d8dee4;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;"
+             "font-size:13px;line-height:1.45;padding:10px 12px;margin:0;border-radius:6px;white-space:pre;"
+             "overflow-x:auto;min-height:380px")  # no wrapping: tables stay aligned, phones scroll sideways
 
 st.set_page_config(page_title="Mini SOC Lab", page_icon=":shield:", layout="wide")
 
@@ -869,7 +874,8 @@ with tab_export:
         st.caption(T("ui.export.caption"))
 
 # ---------------------------------------------------------------------------
-# Terminal (bash and PowerShell in a local Docker container, see soc_lab/terminal.py)
+# Terminal: a simulated bash, PowerShell and CMD that runs anywhere (soc_lab/sim), and a real
+# bash/PowerShell in a local Docker container (soc_lab/terminal.py)
 # ---------------------------------------------------------------------------
 @st.cache_resource
 def terminal_challenge_set():
@@ -878,13 +884,11 @@ def terminal_challenge_set():
 
 def render_terminal_panel(challenge_set, environment: str) -> None:
     status = terminal.docker_status()
-    if status.state == "browser":
-        st.info(T("ui.terminal.browser"))
-        return
     if not status.ready:
         st.warning(T(f"ui.terminal.{status.state}", detail=status.detail))
         st.markdown(T("ui.terminal.setup"))
         st.button(T("ui.terminal.recheck"), key="terminal_recheck")
+        st.caption(T("ui.terminal.docker_hint"))
         return
     url = terminal.terminal_url(environment=environment)
     if not terminal.container_running():
@@ -912,6 +916,43 @@ def render_terminal_panel(challenge_set, environment: str) -> None:
     st.caption(T("ui.terminal.running_caption", url=url))
 
 
+def simulated_screen(environment: str, entries: list[dict]) -> str:
+    """The simulated terminal's screen as HTML: welcome text, then each prompt, command, output and error."""
+    parts = [f'<span style="color:#8b98a5">{html.escape(T(f"ui.terminal.sim_welcome.{environment}"))}</span>\n']
+    for entry in entries:
+        parts.append(f'\n<span style="color:#7ee787">{html.escape(entry["prompt"])}</span>{html.escape(entry["command"])}\n')
+        if entry["output"]:
+            parts.append(html.escape(entry["output"].rstrip("\n")) + "\n")
+        if entry["error"]:
+            parts.append(f'<span style="color:#ff7b72">{html.escape(entry["error"].rstrip())}</span>\n')
+    return f'<pre style="{SIM_STYLE}">{"".join(parts)}</pre>'
+
+
+def render_simulated_terminal(challenge_set, environment: str) -> None:
+    sessions = st.session_state.setdefault("sim_sessions", {})
+    if environment not in sessions:
+        sessions[environment] = {"shell": sim.new_shell(environment, challenge_set.files(environment)), "screen": []}
+    session = sessions[environment]
+    shell, screen = session["shell"], session["screen"]
+    st.caption(T("ui.terminal.sim_caption"))
+    box = st.container(height=440, autoscroll=True, key=f"sim_screen_{environment}")
+    command = st.chat_input(T("ui.terminal.sim_placeholder"), key=f"sim_input_{environment}", max_chars=2000)
+    if command:
+        prompt = shell.prompt()
+        result = shell.run(command)
+        if result.clear:
+            screen.clear()
+        else:
+            screen.append({"prompt": prompt, "command": command, "output": result.output, "error": result.error})
+            del screen[:-SIM_HISTORY_LIMIT]
+    with box:
+        st.html(simulated_screen(environment, screen))
+    if st.button(T("ui.terminal.sim_reset"), icon=":material/restart_alt:", key=f"sim_reset_{environment}",
+                 help=T("ui.terminal.sim_reset_help")):
+        sessions.pop(environment, None)
+        st.rerun()
+
+
 def render_challenges(challenge_set, environment: str) -> None:
     items = challenge_set.for_environment(environment)
     progress_file = challenges.progress_path(ANSWERS_DIR, environment)
@@ -931,8 +972,9 @@ def render_challenges(challenge_set, environment: str) -> None:
                           key=f"terminal_challenge_{environment}")
     challenge = challenge_set.get(chosen)
     st.markdown(f"#### {challenge.text('title', lang)}")
+    shown = [name.replace("/", "\\") if environment == "cmd" else f"~/{name}" for name in challenge.files]
     st.caption(T("ui.terminal.meta", level=challenge.level, topic=T(f"ui.terminal.topic.{challenge.topic}"),
-                 files=", ".join(f"`~/{name}`" for name in challenge.files)))
+                 files=", ".join(f"`{name}`" for name in shown)))
     st.markdown(challenge.text("question", lang))
 
     with st.form(key=f"terminal_form_{challenge.id}", border=False):
@@ -976,13 +1018,25 @@ with tab_terminal:
         terminal_env = st.segmented_control(T("ui.terminal.shell"), list(challenges.ENVIRONMENTS),
                                             format_func=lambda env: T(f"ui.terminal.env.{env}"),
                                             default=challenges.ENVIRONMENTS[0], required=True, key="terminal_env")
+        # The real terminal needs Docker on this computer: not in the browser build, and there is no real CMD.
+        can_use_docker = not terminal.IS_BROWSER and terminal_env in terminal.DOCKER_ENVIRONMENTS
         col_tasks, col_shell = st.columns([2, 3], gap="large")
         with col_tasks:
             render_challenges(terminal_set, terminal_env)
         with col_shell:
-            # Asking Docker takes a moment, so it only happens while this tab is open.
-            if st.session_state.get("active_tab") == "terminal":
-                render_terminal_panel(terminal_set, terminal_env)
+            mode = "simulated"
+            if can_use_docker:
+                mode = st.segmented_control(T("ui.terminal.mode"), ["simulated", "docker"],
+                                            format_func=lambda m: T(f"ui.terminal.mode.{m}"), default="simulated",
+                                            required=True, key="terminal_mode")
+            elif terminal_env == "cmd":
+                st.caption(T("ui.terminal.cmd_note"))
+            if mode == "docker":
+                # Asking Docker takes a moment, so it only happens while this tab is open.
+                if st.session_state.get("active_tab") == "terminal":
+                    render_terminal_panel(terminal_set, terminal_env)
+            else:
+                render_simulated_terminal(terminal_set, terminal_env)
 
 # ---------------------------------------------------------------------------
 # About

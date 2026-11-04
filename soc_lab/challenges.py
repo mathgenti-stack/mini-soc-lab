@@ -1,7 +1,7 @@
 """Terminal challenges: load, check answers and keep progress.
 
 The challenges live in data/terminal/challenges.json, a plain JSON file shared by every phase of
-the Terminal tab (bash and PowerShell in Docker now, the in-browser terminal later), so the
+the Terminal tab (bash and PowerShell in Docker, and the simulated bash, PowerShell and CMD), so the
 same questions, hints and answers work everywhere. Texts are in the file itself, in every
 supported language, so a JavaScript terminal can read it without the Python translation files.
 """
@@ -18,7 +18,7 @@ from .config import PROJECT_ROOT
 from .i18n import DEFAULT_LANGUAGE, LANGUAGES
 
 CHALLENGES_PATH = PROJECT_ROOT / "data" / "terminal" / "challenges.json"
-ENVIRONMENTS = ("linux", "powershell")  # phase 3 adds "cmd"
+ENVIRONMENTS = ("linux", "powershell", "cmd")
 TEXT_FIELDS = ("title", "question", "explanation")
 
 

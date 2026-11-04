@@ -103,8 +103,18 @@ POWERSHELL_EXPECTED = {
         (ROOT / "data/examples/entra_signins.json").read_text(encoding="utf-8"))["value"]
         if s["ipAddress"] == "203.0.113.88" and s["status"]["errorCode"] == 0),
 }
-ALL_EXPECTED = {**EXPECTED, **POWERSHELL_EXPECTED}
-BY_ENVIRONMENT = {"linux": EXPECTED, "powershell": POWERSHELL_EXPECTED}
+CMD_EXPECTED = {
+    "cmd-01": lambda: str(len(load_challenges().files("cmd"))),
+    "cmd-02": lambda: str(sum("Failed password" in line for line in _lines(AUTH))),
+    "cmd-03": lambda: str(sum("invalid user" in line.lower() for line in _lines(AUTH))),
+    "cmd-04": lambda: str(sum("Accepted" in line or "Invalid" in line for line in _lines(AUTH))),
+    "cmd-05": lambda: str(sum(r["event_code"] == "4740" for r in _csv_rows())),
+    "cmd-06": lambda: str(sum(r["source_ip"] == "203.0.113.88" and r["result"] == "FAILURE" for r in _csv_rows())),
+    "cmd-07": lambda: str(sum(any(d.text == "j.smith" for d in e.iter(f"{NS}Data")) for e in _windows_xml())),
+    "cmd-08": lambda: next(line.split()[8] for line in _lines(AUTH) if "Accepted password" in line),
+}
+ALL_EXPECTED = {**EXPECTED, **POWERSHELL_EXPECTED, **CMD_EXPECTED}
+BY_ENVIRONMENT = {"linux": EXPECTED, "powershell": POWERSHELL_EXPECTED, "cmd": CMD_EXPECTED}
 
 
 # ---------------------------------------------------------------------------
@@ -133,7 +143,7 @@ def test_answers_match_the_lab_data(challenge_set, challenge_id):
 
 def test_solutions_only_use_files_of_the_challenge(challenge_set):
     for challenge in challenge_set.challenges:
-        used = set(re.findall(r"logs/[\w.]+", challenge.solution))
+        used = {u.replace("\\", "/") for u in re.findall(r"logs[/\\][\w.]+", challenge.solution)}
         assert used <= set(challenge.files), challenge.id
         assert used or challenge.topic == "basics", challenge.id  # only a first look at the folder uses no file
 
@@ -151,7 +161,7 @@ def test_answer_checking_is_forgiving_about_form_only(challenge_set):
     (lambda d: d["challenges"].append(dict(d["challenges"][0])), "unique"),
     (lambda d: d["challenges"][0].update(answers=[" "]), "answer"),
     (lambda d: d["challenges"][0].update(files=["logs/missing.log"]), "files"),
-    (lambda d: d["challenges"][0].update(environments=["cmd"]), "environment"),
+    (lambda d: d["challenges"][0].update(environments=["zsh"]), "environment"),
     (lambda d: d["challenges"][0].pop("solution"), "solution"),
     (lambda d: d["challenges"][0]["title"].pop("en"), "en"),
 ])
@@ -262,6 +272,7 @@ def test_terminal_tab_without_docker(app, lang, tmp_path):
     app.segmented_control(key="lang").set_value(lang).run()
     assert not app.exception
     assert t("ui.tab.terminal", lang) in [tab.label for tab in app.tabs]
+    app.segmented_control(key="terminal_mode").set_value("docker").run()  # the simulated terminal is the default
     assert any(w.value == t("ui.terminal.no_docker", lang) for w in app.warning)
     assert any("wsl --install" in m.value for m in app.markdown)
 
@@ -284,6 +295,42 @@ def test_wrong_answer_and_reveal(app):
     app.button(key="terminal_reveal_linux-04").click().run()
     assert any("uniq -c" in c.value for c in app.code)
     assert app.session_state["terminal_progress_linux"]["solved"] == set()
+
+
+def screen_text(app, environment):
+    """The simulated terminal's screen (an st.html element) as plain text."""
+    import html as html_module
+
+    screens = [e for e in app.get("html") if "<pre" in e.proto.body]
+    assert screens, "no simulated terminal on the page"
+    return html_module.unescape(re.sub(r"<[^>]+>", "", screens[-1].proto.body))
+
+
+@pytest.mark.parametrize("environment, command, expected", [
+    ("linux", "wc -l < logs/linux_auth.log", "45"),
+    ("powershell", "(Import-Csv logs/sample_auth_logs.csv).Count", "1017"),
+    ("cmd", 'type logs\\linux_auth.log | find /c "Failed password"', "19"),
+])
+def test_simulated_terminal_in_the_tab(app, environment, command, expected):
+    app.run()
+    app.segmented_control(key="terminal_env").set_value(environment).run()
+    assert not app.exception
+    app.chat_input(key=f"sim_input_{environment}").set_value(command).run()
+    assert not app.exception
+    text = screen_text(app, environment)
+    assert command in text and f"\n{expected}\n" in text
+    app.chat_input(key=f"sim_input_{environment}").set_value("nosuchcommand").run()
+    assert "nosuchcommand" in screen_text(app, environment).split(command, 1)[1]
+    app.button(key=f"sim_reset_{environment}").click().run()
+    assert command not in screen_text(app, environment)  # a fresh session
+
+
+def test_cmd_has_no_docker_mode(app):
+    app.run()
+    app.segmented_control(key="terminal_env").set_value("cmd").run()
+    assert not app.exception
+    assert not [s for s in app.segmented_control if s.key == "terminal_mode"]
+    assert any(c.value == t("ui.terminal.cmd_note") for c in app.caption)
 
 
 def test_powershell_challenges_in_the_tab(app, tmp_path):
@@ -312,7 +359,7 @@ def running_terminal(challenge_set):
         terminal.stop()
 
 
-@pytest.mark.parametrize("environment", challenges.ENVIRONMENTS)
+@pytest.mark.parametrize("environment", terminal.DOCKER_ENVIRONMENTS)
 def test_every_solution_prints_the_answer_in_the_real_shell(running_terminal, challenge_set, environment):
     for challenge in challenge_set.for_environment(environment):
         result = terminal.run_in_container(challenge.solution, environment)

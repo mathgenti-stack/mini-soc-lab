@@ -34,6 +34,7 @@ CONTAINER = "mini-soc-lab-terminal"
 DOCKER_DIR = PROJECT_ROOT / "terminal"
 HOME = "/home/analyst"
 DEFAULT_PORT = 7681
+DOCKER_ENVIRONMENTS = ("linux", "powershell")  # CMD exists only in the simulated terminal
 # Lab code the container needs at run time, mounted read-only: the .evtx reader behind Get-WinEvent.
 SUPPORT_FILES = {"/opt/soc-lab/lib/evtx.py": PROJECT_ROOT / "soc_lab" / "evtx.py"}
 HASH_LABEL = "mini-soc-lab.build-hash"

@@ -21,6 +21,16 @@
         "logs/entra_signins.json": "data/examples/entra_signins.json",
         "logs/sample_auth_logs.csv": "data/sample_auth_logs.csv"
       }
+    },
+    "cmd": {
+      "home": "C:\\Users\\analyst",
+      "files": {
+        "logs/linux_auth.log": "data/examples/linux_auth.log",
+        "logs/windows_security.xml": "data/examples/windows_security.xml",
+        "logs/windows_security.evtx": "data/examples/windows_security.evtx",
+        "logs/entra_signins.json": "data/examples/entra_signins.json",
+        "logs/sample_auth_logs.csv": "data/sample_auth_logs.csv"
+      }
     }
   },
   "challenges": [
@@ -637,6 +647,182 @@
       "explanation": {
         "en": "Failures with 50126 (wrong password) on many accounts and then one success: the same pattern as the on-premises logs, for the same account. Confirmed in two sources, the case is solid: reset the password, revoke the sessions and check what the account did after the sign-in.",
         "pt-BR": "Falhas com 50126 (senha errada) em várias contas e depois um sucesso: o mesmo padrão dos logs locais, para a mesma conta. Confirmado em duas fontes, o caso fica sólido: redefina a senha, revogue as sessões e veja o que a conta fez depois do login."
+      }
+    },
+    {
+      "id": "cmd-01",
+      "environments": ["cmd"],
+      "level": 1,
+      "topic": "basics",
+      "files": ["logs/linux_auth.log", "logs/windows_security.xml", "logs/windows_security.evtx", "logs/entra_signins.json", "logs/sample_auth_logs.csv"],
+      "title": {"en": "Count the files", "pt-BR": "Conte os arquivos"},
+      "question": {
+        "en": "The Windows Command Prompt (CMD) is still everywhere: on servers, in scripts and in incident response kits. `dir logs` lists the folder. How many files are in `logs`? Answer with the number only.",
+        "pt-BR": "O Prompt de Comando do Windows (CMD) ainda está em todo lugar: em servidores, em scripts e em kits de resposta a incidentes. `dir logs` lista a pasta. Quantos arquivos há em `logs`? Responda só o número."
+      },
+      "hints": [
+        {"en": "The summary at the end of `dir` says how many *File(s)* there are.", "pt-BR": "O resumo no fim do `dir` diz quantos *File(s)* existem."},
+        {"en": "To get only the number: `dir /b logs` lists bare names, one per line, and `find /c /v \"\"` counts lines.", "pt-BR": "Para ter só o número: `dir /b logs` lista só os nomes, um por linha, e `find /c /v \"\"` conta as linhas."}
+      ],
+      "answers": ["5"],
+      "solution": "dir /b logs | find /c /v \"\"",
+      "explanation": {
+        "en": "`find /c /v \"\"` is the CMD version of `wc -l`: `/v` keeps lines that do NOT contain the text, and since an empty text matches no line, every line is kept and counted. You will see this trick in many Windows scripts.",
+        "pt-BR": "`find /c /v \"\"` é a versão do CMD para o `wc -l`: o `/v` mantém as linhas que NÃO contêm o texto e, como um texto vazio não bate com nenhuma linha, todas são mantidas e contadas. Você vai ver esse truque em muitos scripts de Windows."
+      }
+    },
+    {
+      "id": "cmd-02",
+      "environments": ["cmd"],
+      "level": 1,
+      "topic": "find",
+      "files": ["logs/linux_auth.log"],
+      "title": {"en": "Count failed passwords", "pt-BR": "Conte as senhas erradas"},
+      "question": {
+        "en": "`find` searches for a text in a file. The text always goes in double quotes. How many lines of `logs\\linux_auth.log` contain `Failed password`?",
+        "pt-BR": "O `find` procura um texto num arquivo. O texto sempre vai entre aspas duplas. Quantas linhas de `logs\\linux_auth.log` contêm `Failed password`?"
+      },
+      "hints": [
+        {"en": "`find \"Failed password\" logs\\linux_auth.log` shows the lines.", "pt-BR": "`find \"Failed password\" logs\\linux_auth.log` mostra as linhas."},
+        {"en": "`/c` counts instead of showing. With a file name, find prints a header before the number; reading the file with `type` and a pipe gives only the number.", "pt-BR": "O `/c` conta em vez de mostrar. Com o nome do arquivo, o find escreve um cabeçalho antes do número; lendo o arquivo com `type` e um pipe sai só o número."}
+      ],
+      "answers": ["19"],
+      "solution": "type logs\\linux_auth.log | find /c \"Failed password\"",
+      "explanation": {
+        "en": "`find /c \"text\" file` prints `---------- LOGS\\LINUX_AUTH.LOG: 19`; `type file | find /c \"text\"` prints just `19`. It is the same count as `grep -c` in the Linux challenges: the commands change, the method does not.",
+        "pt-BR": "`find /c \"texto\" arquivo` mostra `---------- LOGS\\LINUX_AUTH.LOG: 19`; `type arquivo | find /c \"texto\"` mostra só `19`. É a mesma contagem do `grep -c` dos desafios de Linux: os comandos mudam, o método não."
+      }
+    },
+    {
+      "id": "cmd-03",
+      "environments": ["cmd"],
+      "level": 2,
+      "topic": "find",
+      "files": ["logs/linux_auth.log"],
+      "title": {"en": "Upper or lower case?", "pt-BR": "Maiúscula ou minúscula?"},
+      "question": {
+        "en": "`find` is case-sensitive by default. How many lines contain `invalid user` written in **any** case (`Invalid user` and `invalid user`)?",
+        "pt-BR": "O `find` diferencia maiúsculas de minúsculas por padrão. Quantas linhas contêm `invalid user` escrito de **qualquer** jeito (`Invalid user` e `invalid user`)?"
+      },
+      "hints": [
+        {"en": "Compare `find /c \"invalid user\"` with `find /c \"Invalid user\"`: they count different lines.", "pt-BR": "Compare `find /c \"invalid user\"` com `find /c \"Invalid user\"`: eles contam linhas diferentes."},
+        {"en": "`/i` ignores case.", "pt-BR": "O `/i` ignora maiúsculas e minúsculas."}
+      ],
+      "answers": ["10"],
+      "solution": "type logs\\linux_auth.log | find /i /c \"invalid user\"",
+      "explanation": {
+        "en": "The same event is written two ways in this log: `Invalid user admin` (the account does not exist) and `Failed password for invalid user admin` (the password attempt). A case-sensitive search silently misses half of them, so when in doubt, use `/i`.",
+        "pt-BR": "O mesmo evento aparece escrito de dois jeitos neste log: `Invalid user admin` (a conta não existe) e `Failed password for invalid user admin` (a tentativa de senha). Uma busca que diferencia maiúsculas perde metade sem avisar; na dúvida, use `/i`."
+      }
+    },
+    {
+      "id": "cmd-04",
+      "environments": ["cmd"],
+      "level": 2,
+      "topic": "findstr",
+      "files": ["logs/linux_auth.log"],
+      "title": {"en": "Several words at once", "pt-BR": "Várias palavras de uma vez"},
+      "question": {
+        "en": "`findstr` is the more powerful search tool. With several words in quotes, it matches lines with **any** of them. How many lines contain `Accepted` or `Invalid`?",
+        "pt-BR": "O `findstr` é a ferramenta de busca mais poderosa. Com várias palavras entre aspas, ele pega linhas com **qualquer uma** delas. Quantas linhas contêm `Accepted` ou `Invalid`?"
+      },
+      "hints": [
+        {"en": "`findstr \"Accepted Invalid\" logs\\linux_auth.log` shows them.", "pt-BR": "`findstr \"Accepted Invalid\" logs\\linux_auth.log` mostra as linhas."},
+        {"en": "Count with a pipe to `find /c /v \"\"`.", "pt-BR": "Conte com um pipe para `find /c /v \"\"`."}
+      ],
+      "answers": ["7"],
+      "solution": "findstr \"Accepted Invalid\" logs\\linux_auth.log | find /c /v \"\"",
+      "explanation": {
+        "en": "In findstr, spaces separate alternatives: `\"Accepted Invalid\"` means *Accepted OR Invalid*. To search for a phrase with a space, use `/c:` (`findstr /c:\"Accepted password\"`). Two logons were accepted (a key for `deploy`, a password for `m.jones`) and five accounts did not exist.",
+        "pt-BR": "No findstr, o espaço separa alternativas: `\"Accepted Invalid\"` quer dizer *Accepted OU Invalid*. Para buscar uma frase com espaço, use `/c:` (`findstr /c:\"Accepted password\"`). Dois logons foram aceitos (uma chave para `deploy`, uma senha para `m.jones`) e cinco contas não existiam."
+      }
+    },
+    {
+      "id": "cmd-05",
+      "environments": ["cmd"],
+      "level": 2,
+      "topic": "csv",
+      "files": ["logs/sample_auth_logs.csv"],
+      "title": {"en": "Lockouts in the CSV", "pt-BR": "Bloqueios no CSV"},
+      "question": {
+        "en": "In `logs\\sample_auth_logs.csv`, event **4740** is an account lockout. How many lockout rows are there? Search for `,4740,` with the commas, so the number cannot match inside another field.",
+        "pt-BR": "Em `logs\\sample_auth_logs.csv`, o evento **4740** é um bloqueio de conta. Quantas linhas de bloqueio existem? Procure `,4740,` com as vírgulas, para o número não bater dentro de outro campo."
+      },
+      "hints": [
+        {"en": "`type logs\\sample_auth_logs.csv | find \",4740,\"` shows the rows.", "pt-BR": "`type logs\\sample_auth_logs.csv | find \",4740,\"` mostra as linhas."},
+        {"en": "Add `/c` to count.", "pt-BR": "Adicione `/c` para contar."}
+      ],
+      "answers": ["2"],
+      "solution": "type logs\\sample_auth_logs.csv | find /c \",4740,\"",
+      "explanation": {
+        "en": "A bare `4740` could also match a port, a record number or a time. Including the separators around a value is the poor man's column filter, and it works in find, findstr and grep alike.",
+        "pt-BR": "Um `4740` solto também poderia bater numa porta, num número de registro ou num horário. Incluir os separadores em volta do valor é o filtro de coluna dos pobres, e funciona igual no find, no findstr e no grep."
+      }
+    },
+    {
+      "id": "cmd-06",
+      "environments": ["cmd"],
+      "level": 3,
+      "topic": "investigation",
+      "files": ["logs/sample_auth_logs.csv"],
+      "title": {"en": "Filter, then filter again", "pt-BR": "Filtre e filtre de novo"},
+      "question": {
+        "en": "Each `find` in a pipe narrows the lines down. How many **failed** logons (`FAILURE`) came from the password-spray address `203.0.113.88`?",
+        "pt-BR": "Cada `find` num pipe estreita as linhas. Quantos logons com **falha** (`FAILURE`) vieram do endereço do password spray, `203.0.113.88`?"
+      },
+      "hints": [
+        {"en": "First keep the rows with the address: `type logs\\sample_auth_logs.csv | find \"203.0.113.88\"`.", "pt-BR": "Primeiro fique com as linhas do endereço: `type logs\\sample_auth_logs.csv | find \"203.0.113.88\"`."},
+        {"en": "Then pipe into `find /c \"FAILURE\"`.", "pt-BR": "Depois mande para `find /c \"FAILURE\"`."}
+      ],
+      "answers": ["15"],
+      "solution": "type logs\\sample_auth_logs.csv | find \"203.0.113.88\" | find /c \"FAILURE\"",
+      "explanation": {
+        "en": "A chain of finds is an AND: address AND failure. Fifteen failures on many accounts from one address in a few minutes is a password spray, and the next step is to look for a SUCCESS from the same address (there is one: `l.taylor`).",
+        "pt-BR": "Uma cadeia de finds é um E: endereço E falha. Quinze falhas em várias contas, de um endereço só, em poucos minutos, é um password spray, e o próximo passo é procurar um SUCCESS do mesmo endereço (existe um: `l.taylor`)."
+      }
+    },
+    {
+      "id": "cmd-07",
+      "environments": ["cmd"],
+      "level": 3,
+      "topic": "windows",
+      "files": ["logs/windows_security.xml"],
+      "title": {"en": "Every event of one user", "pt-BR": "Todos os eventos de um usuário"},
+      "question": {
+        "en": "`logs\\windows_security.xml` has one event per line. How many events mention the account `j.smith`? Search for `>j.smith<`, so the name must be the whole value of a field.",
+        "pt-BR": "`logs\\windows_security.xml` tem um evento por linha. Quantos eventos citam a conta `j.smith`? Procure `>j.smith<`, para o nome ter que ser o valor inteiro de um campo."
+      },
+      "hints": [
+        {"en": "The value of each field is between `>` and `<`, as in `<Data Name=\"TargetUserName\">j.smith</Data>`.", "pt-BR": "O valor de cada campo fica entre `>` e `<`, como em `<Data Name=\"TargetUserName\">j.smith</Data>`."},
+        {"en": "`type logs\\windows_security.xml | find /c \">j.smith<\"`", "pt-BR": "`type logs\\windows_security.xml | find /c \">j.smith<\"`"}
+      ],
+      "answers": ["13"],
+      "solution": "type logs\\windows_security.xml | find /c \">j.smith<\"",
+      "explanation": {
+        "en": "Thirteen events tell the whole story of the lockout: failures (4625), the lockout (4740), the unlock (4767), the logon, the password change (4723) and the logoff. Without the `>` and `<`, a search for `j.smith` would also match `j.smithers` or `j.smith2`.",
+        "pt-BR": "Treze eventos contam a história inteira do bloqueio: falhas (4625), bloqueio (4740), desbloqueio (4767), logon, troca de senha (4723) e logoff. Sem o `>` e o `<`, uma busca por `j.smith` também pegaria `j.smithers` ou `j.smith2`."
+      }
+    },
+    {
+      "id": "cmd-08",
+      "environments": ["cmd"],
+      "level": 4,
+      "topic": "for",
+      "files": ["logs/linux_auth.log"],
+      "title": {"en": "Take one word from a line", "pt-BR": "Pegue uma palavra da linha"},
+      "question": {
+        "en": "Which account logged on over SSH with a password (`Accepted password`)? Find the line, then print only the user name with `for /f`, CMD's tool for cutting lines into words.",
+        "pt-BR": "Qual conta fez logon por SSH com senha (`Accepted password`)? Ache a linha e depois mostre só o nome do usuário com o `for /f`, a ferramenta do CMD para cortar linhas em palavras."
+      },
+      "hints": [
+        {"en": "`findstr /c:\"Accepted password\" logs\\linux_auth.log` shows the line. Count the words: the user name is the 9th.", "pt-BR": "`findstr /c:\"Accepted password\" logs\\linux_auth.log` mostra a linha. Conte as palavras: o usuário é a 9ª."},
+        {"en": "`for /f \"tokens=9\" %a in ('COMMAND') do @echo %a` runs COMMAND and prints its 9th word. The `@` hides the echo of each command.", "pt-BR": "`for /f \"tokens=9\" %a in ('COMANDO') do @echo %a` roda o COMANDO e mostra a 9ª palavra. O `@` esconde o eco de cada comando."}
+      ],
+      "answers": ["m.jones"],
+      "solution": "for /f \"tokens=9\" %a in ('findstr /c:\"Accepted password\" logs\\linux_auth.log') do @echo %a",
+      "explanation": {
+        "en": "`for /f` is CMD's `awk '{print $9}'`: `tokens=` chooses the words and `delims=` the separators (`delims=,` for a CSV). Three failures for `m.jones` from 198.51.100.23 just before this success, then `sudo`: check whether it was really the user.",
+        "pt-BR": "O `for /f` é o `awk '{print $9}'` do CMD: o `tokens=` escolhe as palavras e o `delims=` os separadores (`delims=,` para um CSV). Três falhas de `m.jones` vindas de 198.51.100.23 logo antes deste sucesso, e depois um `sudo`: confira se foi mesmo o usuário."
       }
     }
   ]

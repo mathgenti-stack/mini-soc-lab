@@ -32,9 +32,9 @@ It is a learning and portfolio project built to practise first-line (Tier 1) SOC
 | **Triage store** | Incident status and analyst notes from the free investigation mode are saved in a local SQLite database (`case_store/triage.sqlite3`) with a full change history, shown in the alert queue and in cases, and used by the CLI report. See [docs/triage_store.md](docs/triage_store.md). |
 | **Languages** | The whole interface - menus, alerts, playbooks, training questions, feedback and the Markdown report - is available in English (default) and Brazilian Portuguese, switched from the sidebar without losing answers or progress. The language is kept in the link (`?lang=pt-BR`), so a shared URL opens in the same language. Texts live in `soc_lab/locales/*.json`; log data, IDs and CSV exports are never translated. |
 | **Training mode** | Practise triage before seeing the answer: 15 questions in five stages (understand, collect facts, add context, decide, communicate). The tool's analysis stays hidden until the analyst reveals it; each answer is then shown next to a reference and the ground-truth scenario, with a score: an automatic checklist of the key facts each answer should mention (see [docs/training_score.md](docs/training_score.md)). Answers are saved locally in `training_answers/` and included in the exported report. |
-| **Terminal** | A real shell (Docker, on your own computer) inside the dashboard, bash or PowerShell, with 28 TryHackMe-style challenges that investigate the lab's own logs: `grep`, `awk`, `cut` and `jq` in bash; `Import-Csv`, `Where-Object`, `Group-Object` and `Get-WinEvent` (a lab version that reads `.evtx`) in PowerShell, for Windows events 4624, 4625, 4740 and 4767. Answers are checked at once, with hints and explained solutions. See [docs/terminal.md](docs/terminal.md). |
+| **Terminal** | A TryHackMe-style practice room inside the dashboard: 36 challenges that investigate the lab's own logs in **bash** (`grep`, `awk`, `cut`, `jq`), **PowerShell** (`Import-Csv`, `Where-Object`, `Group-Object`, `Get-WinEvent` on `.evtx`) and **CMD** (`find`, `findstr`, `for /f`). A simulated terminal written in Python runs anywhere, the website and phones included; on your own computer, a real Linux container with bash and PowerShell runs in Docker. Answers are checked at once, with hints and explained solutions. See [docs/terminal.md](docs/terminal.md). |
 | **CLI** | `generate`, `analyse`, `report`, `triage`, `convert`, `export-rules`, `lookup-ip` and `terminal` commands for working without the dashboard. |
-| **Tests** | 313 pytest tests covering rules, thresholds, validation, real log formats, metrics, filters, reporting, training mode, translations, rule export, case correlation, IP enrichment, the triage store, the CLI and dashboard tests. |
+| **Tests** | 437 pytest tests covering rules, thresholds, validation, real log formats, metrics, filters, reporting, training mode, translations, rule export, case correlation, IP enrichment, the triage store, the CLI and dashboard tests. |
 
 ## Technology stack
 
@@ -88,6 +88,7 @@ mini-soc-lab/
 │   ├── scoring.py             Training score (key-point checklist)
 │   ├── challenges.py          Terminal challenges: loading, answer checking, progress
 │   ├── terminal.py            Starts/stops the practice container, bash and PowerShell (Docker)
+│   ├── sim/                   Simulated terminal (bash, PowerShell, CMD) in pure Python, for the browser and phones
 │   ├── i18n.py                Translation lookup (t() and Msg)
 │   ├── locales/               en.json, pt-BR.json - every user-facing text
 │   └── cli.py                 Command-line interface
@@ -166,7 +167,7 @@ python -m soc_lab.cli terminal start
 python -m pytest
 ```
 
-Expected result: `313 passed` (`309 passed, 4 skipped` when Docker is not running: those four run the challenge solutions and the lab `Get-WinEvent` in the real terminal container). The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
+Expected result: `437 passed` on Windows with Docker running. Without Docker, six tests are skipped: they run the challenge solutions, the lab `Get-WinEvent` and the simulator comparisons in the real terminal container. On Linux or macOS, the comparison with `cmd.exe` is skipped too. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
 
 ## Sample detection scenarios
 
@@ -229,7 +230,7 @@ More detail: [docs/limitations_and_false_positives.md](docs/limitations_and_fals
 | [docs/dashboard_guide.md](docs/dashboard_guide.md) | Dashboard walkthrough and example uses |
 | [docs/enrichment.md](docs/enrichment.md) | Offline IP enrichment: data files, what is shown where, and its limits |
 | [docs/training_score.md](docs/training_score.md) | How the training score is calculated, and its limits |
-| [docs/terminal.md](docs/terminal.md) | Terminal tab: setup, safety, PowerShell and the lab `Get-WinEvent`, challenges file format, the three phases |
+| [docs/terminal.md](docs/terminal.md) | Terminal tab: the simulated terminal (bash, PowerShell, CMD), the Docker terminal, the lab `Get-WinEvent`, safety, challenges file format |
 | [docs/triage_store.md](docs/triage_store.md) | How triage status, notes and history are stored in SQLite |
 | [docs/correlation.md](docs/correlation.md) | How alerts are grouped into cases, and the limits of that grouping |
 | [docs/rule_export.md](docs/rule_export.md) | Sigma / SPL / KQL export, field mapping, differences from the lab |
