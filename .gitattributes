@@ -1,0 +1,5 @@
+# Files copied into the Linux terminal image must keep Unix line endings, even on Windows checkouts.
+terminal/** text eol=lf
+*.sh text eol=lf
+# Binary example logs must never be touched by line-ending conversion.
+*.evtx binary

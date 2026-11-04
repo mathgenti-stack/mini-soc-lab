@@ -32,8 +32,9 @@ It is a learning and portfolio project built to practise first-line (Tier 1) SOC
 | **Triage store** | Incident status and analyst notes from the free investigation mode are saved in a local SQLite database (`case_store/triage.sqlite3`) with a full change history, shown in the alert queue and in cases, and used by the CLI report. See [docs/triage_store.md](docs/triage_store.md). |
 | **Languages** | The whole interface - menus, alerts, playbooks, training questions, feedback and the Markdown report - is available in English (default) and Brazilian Portuguese, switched from the sidebar without losing answers or progress. The language is kept in the link (`?lang=pt-BR`), so a shared URL opens in the same language. Texts live in `soc_lab/locales/*.json`; log data, IDs and CSV exports are never translated. |
 | **Training mode** | Practise triage before seeing the answer: 15 questions in five stages (understand, collect facts, add context, decide, communicate). The tool's analysis stays hidden until the analyst reveals it; each answer is then shown next to a reference and the ground-truth scenario, with a score: an automatic checklist of the key facts each answer should mention (see [docs/training_score.md](docs/training_score.md)). Answers are saved locally in `training_answers/` and included in the exported report. |
-| **CLI** | `generate`, `analyse`, `report`, `triage`, `convert`, `export-rules` and `lookup-ip` commands for working without the dashboard. |
-| **Tests** | 258 pytest tests covering rules, thresholds, validation, real log formats, metrics, filters, reporting, training mode, translations, rule export, case correlation, IP enrichment, the triage store, the CLI and dashboard tests. |
+| **Terminal** | A real Linux shell (Docker, on your own computer) inside the dashboard, with 14 TryHackMe-style challenges that investigate the lab's own logs with `grep`, `awk`, `cut` and `jq`. Answers are checked at once, with hints and explained solutions. See [docs/terminal.md](docs/terminal.md). |
+| **CLI** | `generate`, `analyse`, `report`, `triage`, `convert`, `export-rules`, `lookup-ip` and `terminal` commands for working without the dashboard. |
+| **Tests** | 293 pytest tests covering rules, thresholds, validation, real log formats, metrics, filters, reporting, training mode, translations, rule export, case correlation, IP enrichment, the triage store, the CLI and dashboard tests. |
 
 ## Technology stack
 
@@ -41,8 +42,9 @@ It is a learning and portfolio project built to practise first-line (Tier 1) SOC
 - **pandas** for data handling
 - **Streamlit** for the dashboard (charts use **Altair**, which Streamlit installs)
 - **pytest** for automated tests
+- **Docker** (optional): only for the Terminal tab's practice Linux shell
 
-No database, no cloud services and no API keys.
+No database server, no cloud services and no API keys.
 
 ## Architecture
 
@@ -62,6 +64,7 @@ mini-soc-lab/
 ├── config/detection_rules.json  Detection thresholds and environment settings
 ├── data/                      Sample synthetic dataset + ground-truth labels
 │   ├── enrichment/            Fictional GeoIP / ASN and threat-intelligence files
+│   ├── terminal/              challenges.json - Terminal tab challenges (all phases)
 │   └── examples/              Fictional auth.log, Windows .evtx / XML and Entra ID JSON files
 ├── soc_lab/
 │   ├── log_generator.py       Synthetic event and scenario generator
@@ -83,9 +86,12 @@ mini-soc-lab/
 │   ├── enrichment.py          Offline IP enrichment (geolocation, ASN, threat intel)
 │   ├── training.py            Training-mode questionnaire and reference answers
 │   ├── scoring.py             Training score (key-point checklist)
+│   ├── challenges.py          Terminal challenges: loading, answer checking, progress
+│   ├── terminal.py            Starts/stops the practice Linux container (Docker)
 │   ├── i18n.py                Translation lookup (t() and Msg)
 │   ├── locales/               en.json, pt-BR.json - every user-facing text
 │   └── cli.py                 Command-line interface
+├── terminal/                  Dockerfile of the practice Linux terminal
 ├── tests/                     pytest suite
 └── docs/                      Architecture, log format, rules, limitations, guides
 ```
@@ -149,6 +155,9 @@ python -m soc_lab.cli export-rules
 
 # Look addresses up in the offline enrichment files
 python -m soc_lab.cli lookup-ip 203.0.113.88 203.0.113.120
+
+# Practice Linux terminal (needs Docker): start, status, stop
+python -m soc_lab.cli terminal start
 ```
 
 ## Running tests
@@ -157,7 +166,7 @@ python -m soc_lab.cli lookup-ip 203.0.113.88 203.0.113.120
 python -m pytest
 ```
 
-Expected result: `258 passed`. The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
+Expected result: `293 passed` (`291 passed, 2 skipped` when Docker is not running: those two run the challenge solutions in the real terminal container). The dashboard smoke test uses Streamlit's built-in `AppTest` and does not need a browser.
 
 ## Sample detection scenarios
 
@@ -220,6 +229,7 @@ More detail: [docs/limitations_and_false_positives.md](docs/limitations_and_fals
 | [docs/dashboard_guide.md](docs/dashboard_guide.md) | Dashboard walkthrough and example uses |
 | [docs/enrichment.md](docs/enrichment.md) | Offline IP enrichment: data files, what is shown where, and its limits |
 | [docs/training_score.md](docs/training_score.md) | How the training score is calculated, and its limits |
+| [docs/terminal.md](docs/terminal.md) | Terminal tab: setup, safety, challenges file format, the three phases |
 | [docs/triage_store.md](docs/triage_store.md) | How triage status, notes and history are stored in SQLite |
 | [docs/correlation.md](docs/correlation.md) | How alerts are grouped into cases, and the limits of that grouping |
 | [docs/rule_export.md](docs/rule_export.md) | Sigma / SPL / KQL export, field mapping, differences from the lab |

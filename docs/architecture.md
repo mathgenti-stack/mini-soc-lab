@@ -28,6 +28,8 @@
 | `scoring.py` | Training score: key-point checklist per answer | training, context |
 | `case_store.py` | SQLite store for triage status, notes and change history | models |
 | `enrichment.py` | Offline geolocation, ASN and threat-intelligence lookups | data/enrichment files |
+| `challenges.py` | Terminal challenges (data/terminal/challenges.json): load, validate, check answers, progress | i18n |
+| `terminal.py` | Build, start and stop the practice Linux container through the `docker` CLI | - |
 | `cli.py` | Command-line entry point | all of the above |
 | `streamlit_app.py` | Dashboard UI | all of the above |
 

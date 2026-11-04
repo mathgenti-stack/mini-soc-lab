@@ -7,6 +7,7 @@
     python -m soc_lab.cli export-rules [--format all|sigma|spl|kql] [--output-dir rules_export]
     python -m soc_lab.cli lookup-ip 203.0.113.88 [more addresses]
     python -m soc_lab.cli triage   [--alert-id ALR-0010 --status Escalated --notes "..."]
+    python -m soc_lab.cli terminal start|stop|status
 """
 
 from __future__ import annotations
@@ -16,7 +17,9 @@ import sys
 from datetime import date
 from pathlib import Path
 
+from . import terminal
 from .case_store import CaseStore, dataset_key, default_db_path
+from .challenges import load_challenges
 from .config import DEFAULT_CONFIG_PATH, PROJECT_ROOT, ConfigError, load_config
 from .correlation import cases_to_csv, correlate_alerts, correlation_window
 from .detection import run_detection
@@ -263,7 +266,34 @@ def build_parser() -> argparse.ArgumentParser:
     lookup.add_argument("ips", nargs="+", metavar="IP")
     lookup.add_argument("--config", default=str(DEFAULT_CONFIG_PATH))
     lookup.set_defaults(handler=_cmd_lookup_ip)
+
+    term = sub.add_parser("terminal", help="Start, stop or check the practice Linux terminal (needs Docker).")
+    term.add_argument("action", choices=["start", "stop", "status"])
+    term.set_defaults(handler=_cmd_terminal)
     return parser
+
+
+def _cmd_terminal(args: argparse.Namespace) -> int:
+    status = terminal.docker_status()
+    if not status.ready:
+        print(f"Docker is not ready ({status.state}). {status.detail}".strip())
+        print("Windows: run 'wsl --install' as administrator once, restart, then open Docker Desktop.")
+        return 1
+    url = terminal.terminal_url()
+    if args.action == "start":
+        print("Starting the terminal (the first start builds the image and can take a few minutes)...")
+        try:
+            terminal.start(load_challenges().files("linux"))
+        except terminal.TerminalError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+        print(f"Terminal running at {url} (this computer only). Logs are in ~/logs, read-only.")
+    elif args.action == "stop":
+        terminal.stop()
+        print("Terminal stopped.")
+    else:
+        print(f"Terminal running at {url}." if terminal.container_running() else "Terminal not running.")
+    return 0
 
 
 def _format_arguments(cmd: argparse.ArgumentParser) -> None:

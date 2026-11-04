@@ -19,7 +19,7 @@ from soc_lab.detection import run_detection
 from soc_lab.enrichment import display_rows, load_enrichment
 from soc_lab.detection.export import CODE_LANGUAGES, FIELD_MAPPING, FORMAT_NAMES, FORMATS, export_rules, export_zip
 from soc_lab.filters import filter_alerts, filter_events
-from soc_lab import scoring, training
+from soc_lab import challenges, scoring, terminal, training
 from soc_lab.i18n import DEFAULT_LANGUAGE, LANGUAGES, t, tr
 from soc_lab.log_generator import GeneratorSettings, generate_csv_text, generate_events
 from soc_lab.log_loader import LogFileError, load_events, rejection_reason_msg
@@ -38,7 +38,8 @@ DATA_SOURCES = ["sample", "generate", "examples", "upload"]
 EXAMPLES_DIR = Path(__file__).parent / "data" / "examples"
 EXAMPLE_FILES = ["linux_auth.log", "windows_security.xml", "windows_security.evtx", "entra_signins.json"]
 EXAMPLE_YEAR = 2026  # the classic syslog lines in linux_auth.log have no year
-TAB_IDS = ["overview", "alerts", "cases", "events", "investigation", "quality", "export", "about"]
+TAB_IDS = ["overview", "alerts", "cases", "events", "investigation", "quality", "export", "terminal", "about"]
+TERMINAL_ENVIRONMENT = "linux"
 
 st.set_page_config(page_title="Mini SOC Lab", page_icon=":shield:", layout="wide")
 
@@ -301,7 +302,8 @@ token = training.dataset_token(source_name)
 tab_labels = [T(f"ui.tab.{tab}") for tab in TAB_IDS]
 tab_key = f"main_tabs_{lang}"
 active_tab = st.session_state.get("active_tab", TAB_IDS[0])
-tab_overview, tab_alerts, tab_cases, tab_events, tab_investigate, tab_quality, tab_export, tab_about = st.tabs(
+(tab_overview, tab_alerts, tab_cases, tab_events, tab_investigate, tab_quality, tab_export, tab_terminal,
+ tab_about) = st.tabs(
     tab_labels, key=tab_key, default=tab_labels[TAB_IDS.index(active_tab)], on_change="rerun")
 chosen_tab = st.session_state.get(tab_key)
 st.session_state["active_tab"] = TAB_IDS[tab_labels.index(chosen_tab)] if chosen_tab in tab_labels else active_tab
@@ -865,6 +867,116 @@ with tab_export:
                      column_config={"lab": T("ui.export.col_lab"), "sentinel": T("ui.export.col_sentinel"),
                                     "splunk": T("ui.export.col_splunk")})
         st.caption(T("ui.export.caption"))
+
+# ---------------------------------------------------------------------------
+# Terminal (phase 1: a real Linux shell in a local Docker container, see soc_lab/terminal.py)
+# ---------------------------------------------------------------------------
+@st.cache_resource
+def terminal_challenge_set():
+    return challenges.load_challenges()
+
+
+def render_terminal_panel(challenge_set) -> None:
+    status = terminal.docker_status()
+    if status.state == "browser":
+        st.info(T("ui.terminal.browser"))
+        return
+    if not status.ready:
+        st.warning(T(f"ui.terminal.{status.state}", detail=status.detail))
+        st.markdown(T("ui.terminal.setup"))
+        st.button(T("ui.terminal.recheck"), key="terminal_recheck")
+        return
+    url = terminal.terminal_url()
+    if not terminal.container_running():
+        st.info(T("ui.terminal.stopped"))
+        if st.button(T("ui.terminal.start"), type="primary", icon=":material/terminal:", key="terminal_start"):
+            with st.spinner(T("ui.terminal.starting")):
+                try:
+                    terminal.start(challenge_set.files(TERMINAL_ENVIRONMENT))
+                except (terminal.TerminalError, OSError) as exc:
+                    st.error(T("ui.terminal.error", detail=str(exc)))
+                    return
+            st.rerun()
+        return
+    col_open, col_stop = st.columns(2)
+    col_open.link_button(T("ui.terminal.open_new_tab"), url, icon=":material/open_in_new:", width="stretch")
+    if col_stop.button(T("ui.terminal.stop"), icon=":material/stop:", key="terminal_stop", width="stretch"):
+        try:
+            terminal.stop()
+        except terminal.TerminalError as exc:
+            st.error(T("ui.terminal.error", detail=str(exc)))
+        st.rerun()
+    st.iframe(url, height=560, alt=T("ui.terminal.iframe_alt"))
+    st.caption(T("ui.terminal.running_caption", url=url))
+
+
+def render_challenges(challenge_set) -> None:
+    items = challenge_set.for_environment(TERMINAL_ENVIRONMENT)
+    progress_file = challenges.progress_path(ANSWERS_DIR, TERMINAL_ENVIRONMENT)
+    if "terminal_progress" not in st.session_state:
+        st.session_state["terminal_progress"] = challenges.load_progress(progress_file)
+    progress = st.session_state["terminal_progress"]
+    solved, revealed = progress["solved"], progress["revealed"]
+    done = sum(c.id in solved for c in items)
+    st.progress(done / len(items), text=T("ui.terminal.progress", solved=done, total=len(items)))
+
+    def label(challenge_id: str) -> str:
+        mark = "✅" if challenge_id in solved else "👁️" if challenge_id in revealed else "⬜"
+        return f"{mark} {challenge_id} · {challenge_set.get(challenge_id).text('title', lang)}"
+
+    chosen = st.selectbox(T("ui.terminal.challenge"), [c.id for c in items], format_func=label,
+                          key="terminal_challenge")
+    challenge = challenge_set.get(chosen)
+    st.markdown(f"#### {challenge.text('title', lang)}")
+    st.caption(T("ui.terminal.meta", level=challenge.level, topic=T(f"ui.terminal.topic.{challenge.topic}"),
+                 files=", ".join(f"`~/{name}`" for name in challenge.files)))
+    st.markdown(challenge.text("question", lang))
+
+    with st.form(key=f"terminal_form_{challenge.id}", border=False):
+        answer = st.text_input(T("ui.terminal.answer"), key=f"terminal_answer_{challenge.id}")
+        submitted = st.form_submit_button(T("ui.terminal.check"), icon=":material/check:")
+    if submitted:
+        if not answer.strip():
+            st.warning(T("ui.terminal.empty"))
+        elif challenge.check(answer):
+            solved.add(challenge.id)
+            challenges.save_progress(progress_file, progress)
+            st.success(T("ui.terminal.correct"))
+        else:
+            st.error(T("ui.terminal.wrong"))
+
+    for number in range(len(challenge.hints)):
+        with st.expander(T("ui.terminal.hint", number=number + 1), icon=":material/lightbulb:"):
+            st.markdown(challenge.hint(number, lang))
+
+    if challenge.id in solved or challenge.id in revealed:
+        if challenge.id not in solved:
+            st.caption(T("ui.terminal.revealed_note"))
+        st.markdown(T("ui.terminal.solution"))
+        st.code(challenge.solution, language="bash")
+        st.markdown(T("ui.terminal.why"))
+        st.markdown(challenge.text("explanation", lang))
+    elif st.button(T("ui.terminal.reveal"), icon=":material/visibility:", key=f"terminal_reveal_{challenge.id}"):
+        revealed.add(challenge.id)
+        challenges.save_progress(progress_file, progress)
+        st.rerun()
+
+
+with tab_terminal:
+    st.subheader(T("ui.terminal.title"))
+    st.caption(T("ui.terminal.caption"))
+    try:
+        terminal_set = terminal_challenge_set()
+    except challenges.ChallengeError as exc:
+        st.error(T("ui.terminal.load_error", detail=str(exc)))
+    else:
+        col_tasks, col_shell = st.columns([2, 3], gap="large")
+        with col_tasks:
+            render_challenges(terminal_set)
+        with col_shell:
+            # Asking Docker takes a moment, so it only happens while this tab is open.
+            if st.session_state.get("active_tab") == "terminal":
+                render_terminal_panel(terminal_set)
 
 # ---------------------------------------------------------------------------
 # About

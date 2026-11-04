@@ -1,0 +1,324 @@
+{
+  "format_version": 1,
+  "about": "Terminal challenges for the Mini SOC Lab. One file for every phase: the Docker terminal (phase 1), PowerShell (phase 2) and the simulated in-browser terminal (phase 3). Paths in 'files' are relative to the terminal's home directory; 'environments.<name>.files' says which lab file each path is. 'solution' prints exactly the answer, so tests can run it in the real container.",
+  "environments": {
+    "linux": {
+      "home": "/home/analyst",
+      "files": {
+        "logs/linux_auth.log": "data/examples/linux_auth.log",
+        "logs/windows_security.xml": "data/examples/windows_security.xml",
+        "logs/entra_signins.json": "data/examples/entra_signins.json",
+        "logs/sample_auth_logs.csv": "data/sample_auth_logs.csv"
+      }
+    }
+  },
+  "challenges": [
+    {
+      "id": "linux-01",
+      "environments": ["linux"],
+      "level": 1,
+      "topic": "basics",
+      "files": ["logs/linux_auth.log"],
+      "title": {"en": "How big is the log?", "pt-BR": "Qual o tamanho do log?"},
+      "question": {
+        "en": "Look around first: `ls logs` lists the files. How many lines does `logs/linux_auth.log` have? Answer with the number only.",
+        "pt-BR": "Primeiro, explore: `ls logs` lista os arquivos. Quantas linhas tem `logs/linux_auth.log`? Responda só o número."
+      },
+      "hints": [
+        {"en": "`wc` counts lines, words and bytes.", "pt-BR": "O `wc` conta linhas, palavras e bytes."},
+        {"en": "`wc -l` counts only lines. Use `<` to get the number without the file name.", "pt-BR": "`wc -l` conta só as linhas. Use `<` para ver o número sem o nome do arquivo."}
+      ],
+      "answers": ["45"],
+      "solution": "wc -l < logs/linux_auth.log",
+      "explanation": {
+        "en": "`wc -l` counts lines. Knowing the size of a log before reading it tells you whether to open it whole (`cat`, `less`) or filter it first (`grep`).",
+        "pt-BR": "`wc -l` conta linhas. Saber o tamanho do log antes de ler ajuda a decidir se dá para abrir inteiro (`cat`, `less`) ou se é melhor filtrar antes (`grep`)."
+      }
+    },
+    {
+      "id": "linux-02",
+      "environments": ["linux"],
+      "level": 1,
+      "topic": "basics",
+      "files": ["logs/linux_auth.log"],
+      "title": {"en": "Which server wrote it?", "pt-BR": "Qual servidor escreveu o log?"},
+      "question": {
+        "en": "Every syslog line has the date, the time, then the name of the host that wrote it. Which host wrote `logs/linux_auth.log`?",
+        "pt-BR": "Toda linha de syslog tem a data, a hora e depois o nome do host que a escreveu. Qual host escreveu `logs/linux_auth.log`?"
+      },
+      "hints": [
+        {"en": "`head -3 logs/linux_auth.log` shows the first three lines.", "pt-BR": "`head -3 logs/linux_auth.log` mostra as três primeiras linhas."},
+        {"en": "The host is the 4th word of each line: `awk '{print $4}'` prints it.", "pt-BR": "O host é a 4ª palavra de cada linha: `awk '{print $4}'` mostra ela."}
+      ],
+      "answers": ["LON-WEB-01"],
+      "solution": "head -1 logs/linux_auth.log | awk '{print $4}'",
+      "explanation": {
+        "en": "`head` reads the start of a file, and `awk '{print $4}'` prints the 4th space-separated field. The host tells you which machine to look at next.",
+        "pt-BR": "`head` lê o começo do arquivo, e `awk '{print $4}'` mostra o 4º campo separado por espaços. O host diz qual máquina investigar em seguida."
+      }
+    },
+    {
+      "id": "linux-03",
+      "environments": ["linux"],
+      "level": 2,
+      "topic": "grep",
+      "files": ["logs/linux_auth.log"],
+      "title": {"en": "Count the failed passwords", "pt-BR": "Conte as senhas erradas"},
+      "question": {
+        "en": "OpenSSH writes `Failed password` for every wrong password. How many lines in `logs/linux_auth.log` contain it?",
+        "pt-BR": "O OpenSSH escreve `Failed password` a cada senha errada. Quantas linhas de `logs/linux_auth.log` têm esse texto?"
+      },
+      "hints": [
+        {"en": "`grep 'Failed password' logs/linux_auth.log` shows the matching lines.", "pt-BR": "`grep 'Failed password' logs/linux_auth.log` mostra as linhas que batem."},
+        {"en": "`grep -c` counts the matching lines instead of printing them.", "pt-BR": "`grep -c` conta as linhas que batem em vez de mostrá-las."}
+      ],
+      "answers": ["19"],
+      "solution": "grep -c 'Failed password' logs/linux_auth.log",
+      "explanation": {
+        "en": "`grep` is the analyst's first tool: it keeps only the lines you care about. `-c` counts them. sshd writes other lines for the same attempt (`Invalid user`, `authentication failure`), so count one kind of line, never all of them.",
+        "pt-BR": "O `grep` é a primeira ferramenta do analista: ele deixa só as linhas que interessam. O `-c` conta essas linhas. O sshd escreve outras linhas sobre a mesma tentativa (`Invalid user`, `authentication failure`), então conte um tipo de linha só, nunca todas."
+      }
+    },
+    {
+      "id": "linux-04",
+      "environments": ["linux"],
+      "level": 2,
+      "topic": "pipes",
+      "files": ["logs/linux_auth.log"],
+      "title": {"en": "Find the attacker", "pt-BR": "Encontre o atacante"},
+      "question": {
+        "en": "Which IP address has the most `Failed password` lines?",
+        "pt-BR": "Qual endereço IP tem mais linhas de `Failed password`?"
+      },
+      "hints": [
+        {"en": "In a `Failed password` line the IP comes 4 words before the end: `awk '{print $(NF-3)}'`.", "pt-BR": "Numa linha de `Failed password` o IP vem 4 palavras antes do fim: `awk '{print $(NF-3)}'`."},
+        {"en": "Count repeated values with `sort | uniq -c`, then put the biggest first with `sort -rn`.", "pt-BR": "Conte valores repetidos com `sort | uniq -c` e coloque o maior primeiro com `sort -rn`."}
+      ],
+      "answers": ["203.0.113.45"],
+      "solution": "grep 'Failed password' logs/linux_auth.log | awk '{print $(NF-3)}' | sort | uniq -c | sort -rn | head -1 | awk '{print $2}'",
+      "explanation": {
+        "en": "This pipeline is the classic \"top talkers\" pattern: filter (`grep`), pick a field (`awk`), count (`sort | uniq -c`), rank (`sort -rn`) and keep the top (`head`). 203.0.113.45 failed 16 times in about 3 minutes: the shape of a brute force.",
+        "pt-BR": "Esse pipeline é o padrão clássico de \"quem mais aparece\": filtrar (`grep`), escolher um campo (`awk`), contar (`sort | uniq -c`), ordenar (`sort -rn`) e ficar com o primeiro (`head`). O 203.0.113.45 falhou 16 vezes em uns 3 minutos: o formato de um brute force."
+      }
+    },
+    {
+      "id": "linux-05",
+      "environments": ["linux"],
+      "level": 2,
+      "topic": "pipes",
+      "files": ["logs/linux_auth.log"],
+      "title": {"en": "Usernames that do not exist", "pt-BR": "Usuários que não existem"},
+      "question": {
+        "en": "sshd writes `Invalid user NAME` when someone tries an account that does not exist. How many different invalid usernames were tried?",
+        "pt-BR": "O sshd escreve `Invalid user NOME` quando alguém tenta uma conta que não existe. Quantos nomes de usuário inválidos diferentes foram tentados?"
+      },
+      "hints": [
+        {"en": "`grep 'Invalid user'` keeps those lines; the name is the 8th word.", "pt-BR": "`grep 'Invalid user'` deixa só essas linhas; o nome é a 8ª palavra."},
+        {"en": "`sort -u` removes repeated values, and `wc -l` counts what is left.", "pt-BR": "`sort -u` remove valores repetidos, e `wc -l` conta o que sobrou."}
+      ],
+      "answers": ["5"],
+      "solution": "grep 'Invalid user' logs/linux_auth.log | awk '{print $8}' | sort -u | wc -l",
+      "explanation": {
+        "en": "admin, oracle, postgres, test and ubuntu are default names that attack tools try first. Many invalid usernames from one address point to an automated tool rather than a person who forgot a password.",
+        "pt-BR": "admin, oracle, postgres, test e ubuntu são nomes padrão que ferramentas de ataque testam primeiro. Muitos usuários inválidos vindos de um endereço indicam uma ferramenta automática, e não uma pessoa que esqueceu a senha."
+      }
+    },
+    {
+      "id": "linux-06",
+      "environments": ["linux"],
+      "level": 2,
+      "topic": "grep",
+      "files": ["logs/linux_auth.log"],
+      "title": {"en": "Which account was locked?", "pt-BR": "Qual conta foi bloqueada?"},
+      "question": {
+        "en": "After too many failures, `pam_faillock` locks the account. Which account was locked?",
+        "pt-BR": "Depois de falhas demais, o `pam_faillock` bloqueia a conta. Qual conta foi bloqueada?"
+      },
+      "hints": [
+        {"en": "Search for `faillock` or `locked`.", "pt-BR": "Procure por `faillock` ou `locked`."},
+        {"en": "`grep -i` ignores upper and lower case.", "pt-BR": "`grep -i` ignora maiúsculas e minúsculas."}
+      ],
+      "answers": ["root"],
+      "solution": "grep 'temporarily locked' logs/linux_auth.log | awk '{print $(NF-3)}'",
+      "explanation": {
+        "en": "The lockout stopped the guessing against root. Next questions for an analyst: did any login from that address succeed (`grep Accepted`), and should direct root login over SSH be allowed at all?",
+        "pt-BR": "O bloqueio parou as tentativas contra o root. Próximas perguntas do analista: algum login desse endereço deu certo (`grep Accepted`)? E o login direto como root por SSH deveria ser permitido?"
+      }
+    },
+    {
+      "id": "linux-07",
+      "environments": ["linux"],
+      "level": 3,
+      "topic": "investigation",
+      "files": ["logs/linux_auth.log"],
+      "title": {"en": "What did m.jones do?", "pt-BR": "O que o m.jones fez?"},
+      "question": {
+        "en": "m.jones failed three times, then got in. Which command did they run with `sudo`? Answer with the full command as the log shows it.",
+        "pt-BR": "O m.jones errou três vezes e depois entrou. Que comando ele rodou com `sudo`? Responda o comando completo como aparece no log."
+      },
+      "hints": [
+        {"en": "`grep m.jones logs/linux_auth.log` shows everything about this account, in order.", "pt-BR": "`grep m.jones logs/linux_auth.log` mostra tudo sobre essa conta, em ordem."},
+        {"en": "The sudo line ends with `COMMAND=`. `awk -F'COMMAND=' '{print $2}'` prints what comes after it.", "pt-BR": "A linha do sudo termina com `COMMAND=`. `awk -F'COMMAND=' '{print $2}'` mostra o que vem depois."}
+      ],
+      "answers": ["/usr/bin/apt update", "apt update"],
+      "solution": "grep sudo logs/linux_auth.log | awk -F'COMMAND=' '{print $2}'",
+      "explanation": {
+        "en": "Reading one account's lines in order builds a timeline: three failures from 198.51.100.23, a success, `sudo apt update`, a password change, logoff. It looks like a user mistyping and then doing routine work, but only the user can confirm it.",
+        "pt-BR": "Ler as linhas de uma conta em ordem monta uma linha do tempo: três falhas a partir de 198.51.100.23, um sucesso, `sudo apt update`, troca de senha, logoff. Parece um usuário que errou a senha e depois fez uma tarefa de rotina, mas só ele pode confirmar."
+      }
+    },
+    {
+      "id": "linux-08",
+      "environments": ["linux"],
+      "level": 3,
+      "topic": "csv",
+      "files": ["logs/sample_auth_logs.csv"],
+      "title": {"en": "Failed logons in the lab dataset", "pt-BR": "Logins com falha no dataset do lab"},
+      "question": {
+        "en": "`logs/sample_auth_logs.csv` is the lab's two-week dataset. Columns are separated by commas: column 5 is `event_type`, column 6 is `result`. How many rows are a `LOGON` with result `FAILURE`?",
+        "pt-BR": "`logs/sample_auth_logs.csv` é o dataset de duas semanas do lab. As colunas são separadas por vírgula: a coluna 5 é `event_type` e a 6 é `result`. Quantas linhas são `LOGON` com resultado `FAILURE`?"
+      },
+      "hints": [
+        {"en": "`head -3 logs/sample_auth_logs.csv` shows the header. `awk -F,` splits on commas.", "pt-BR": "`head -3 logs/sample_auth_logs.csv` mostra o cabeçalho. `awk -F,` separa pelas vírgulas."},
+        {"en": "`awk -F, '$5==\"LOGON\" && $6==\"FAILURE\"'` keeps the matching rows; count them with `wc -l`.", "pt-BR": "`awk -F, '$5==\"LOGON\" && $6==\"FAILURE\"'` deixa só as linhas certas; conte com `wc -l`."}
+      ],
+      "answers": ["165"],
+      "solution": "awk -F, '$5==\"LOGON\" && $6==\"FAILURE\"' logs/sample_auth_logs.csv | wc -l",
+      "explanation": {
+        "en": "`awk` can test columns, which `grep` cannot: `grep FAILURE` would also match a username or a host that contains the word. The Overview tab shows the same number as \"failed logons\".",
+        "pt-BR": "O `awk` consegue testar colunas, e o `grep` não: `grep FAILURE` também pegaria um usuário ou host que tivesse essa palavra. A aba Overview mostra o mesmo número como \"failed logons\"."
+      }
+    },
+    {
+      "id": "linux-09",
+      "environments": ["linux"],
+      "level": 3,
+      "topic": "csv",
+      "files": ["logs/sample_auth_logs.csv"],
+      "title": {"en": "The noisiest external address", "pt-BR": "O endereço externo mais barulhento"},
+      "question": {
+        "en": "Internal addresses start with `10.`. Which address *outside* `10.0.0.0/8` has the most failures (column 6 `FAILURE`, column 4 `source_ip`)?",
+        "pt-BR": "Endereços internos começam com `10.`. Qual endereço *fora* de `10.0.0.0/8` tem mais falhas (coluna 6 `FAILURE`, coluna 4 `source_ip`)?"
+      },
+      "hints": [
+        {"en": "In awk, `$4 !~ /^10\\./` means \"column 4 does not start with 10.\".", "pt-BR": "No awk, `$4 !~ /^10\\./` quer dizer \"a coluna 4 não começa com 10.\"."},
+        {"en": "Print column 4 of the failures, then count and rank with `sort | uniq -c | sort -rn`.", "pt-BR": "Mostre a coluna 4 das falhas e depois conte e ordene com `sort | uniq -c | sort -rn`."}
+      ],
+      "answers": ["203.0.113.45"],
+      "solution": "awk -F, '$6==\"FAILURE\" && $4 !~ /^10\\./ {print $4}' logs/sample_auth_logs.csv | sort | uniq -c | sort -rn | head -1 | awk '{print $2}'",
+      "explanation": {
+        "en": "25 failures from 203.0.113.45, then 15 from 203.0.113.88 and 8 from 203.0.113.120: the three simulated attacks of the dataset. The same ranking is behind R001, R003 and R004.",
+        "pt-BR": "25 falhas de 203.0.113.45, depois 15 de 203.0.113.88 e 8 de 203.0.113.120: os três ataques simulados do dataset. É o mesmo ranking que está por trás das regras R001, R003 e R004."
+      }
+    },
+    {
+      "id": "linux-10",
+      "environments": ["linux"],
+      "level": 3,
+      "topic": "investigation",
+      "files": ["logs/sample_auth_logs.csv"],
+      "title": {"en": "Password spray: how wide?", "pt-BR": "Password spray: qual o alcance?"},
+      "question": {
+        "en": "203.0.113.88 sprayed passwords. How many *different* accounts failed to log on from this address?",
+        "pt-BR": "O 203.0.113.88 fez um password spray. Quantas contas *diferentes* falharam ao fazer login a partir desse endereço?"
+      },
+      "hints": [
+        {"en": "Keep rows where column 4 is the address and column 6 is `FAILURE`, and print column 3 (`username`).", "pt-BR": "Fique com as linhas em que a coluna 4 é o endereço e a 6 é `FAILURE`, e mostre a coluna 3 (`username`)."},
+        {"en": "`sort -u | wc -l` counts distinct values.", "pt-BR": "`sort -u | wc -l` conta valores distintos."}
+      ],
+      "answers": ["15"],
+      "solution": "awk -F, '$4==\"203.0.113.88\" && $6==\"FAILURE\" {print $3}' logs/sample_auth_logs.csv | sort -u | wc -l",
+      "explanation": {
+        "en": "One address, 15 accounts, about one attempt each: that is spraying (R004), the opposite of a brute force (many attempts against one account). Spraying stays under per-account lockout limits.",
+        "pt-BR": "Um endereço, 15 contas, mais ou menos uma tentativa em cada: isso é spraying (R004), o oposto de um brute force (muitas tentativas numa conta só). O spray fica abaixo do limite de bloqueio de cada conta."
+      }
+    },
+    {
+      "id": "linux-11",
+      "environments": ["linux"],
+      "level": 3,
+      "topic": "investigation",
+      "files": ["logs/sample_auth_logs.csv"],
+      "title": {"en": "Did the spray work?", "pt-BR": "O spray funcionou?"},
+      "question": {
+        "en": "Which account logged on *successfully* from 203.0.113.88?",
+        "pt-BR": "Qual conta fez login *com sucesso* a partir de 203.0.113.88?"
+      },
+      "hints": [
+        {"en": "Same filter as before, but `SUCCESS` instead of `FAILURE`.", "pt-BR": "Mesmo filtro de antes, mas com `SUCCESS` no lugar de `FAILURE`."}
+      ],
+      "answers": ["l.taylor"],
+      "solution": "awk -F, '$4==\"203.0.113.88\" && $6==\"SUCCESS\" {print $3}' logs/sample_auth_logs.csv",
+      "explanation": {
+        "en": "l.taylor had no failure before succeeding: the spray found a valid password. This is why R004 is Critical here, and why the account needs a password reset and a check of what the session did.",
+        "pt-BR": "A l.taylor não teve nenhuma falha antes do sucesso: o spray achou uma senha válida. Por isso a R004 fica Crítica aqui, e a conta precisa de troca de senha e de uma verificação do que a sessão fez."
+      }
+    },
+    {
+      "id": "linux-12",
+      "environments": ["linux"],
+      "level": 3,
+      "topic": "investigation",
+      "files": ["logs/sample_auth_logs.csv"],
+      "title": {"en": "A late Remote Desktop session", "pt-BR": "Uma Área de Trabalho Remota tarde da noite"},
+      "question": {
+        "en": "R006 flagged c.evans for a logon of type `REMOTE_INTERACTIVE` (Remote Desktop). To which host?",
+        "pt-BR": "A R006 alertou sobre um login do c.evans do tipo `REMOTE_INTERACTIVE` (Área de Trabalho Remota). Em qual host?"
+      },
+      "hints": [
+        {"en": "Two `grep`s in a row narrow it down: first the account, then the logon type.", "pt-BR": "Dois `grep` seguidos resolvem: primeiro a conta, depois o tipo de login."},
+        {"en": "`cut -d, -f7` prints column 7 (`hostname`).", "pt-BR": "`cut -d, -f7` mostra a coluna 7 (`hostname`)."}
+      ],
+      "answers": ["LON-DC-01"],
+      "solution": "grep c.evans logs/sample_auth_logs.csv | grep REMOTE_INTERACTIVE | cut -d, -f7 | sort -u",
+      "explanation": {
+        "en": "LON-DC-01 is the domain controller, the most sensitive server in a Windows network. Compare with c.evans's usual hosts: `grep c.evans logs/sample_auth_logs.csv | cut -d, -f7 | sort | uniq -c`.",
+        "pt-BR": "O LON-DC-01 é o controlador de domínio, o servidor mais sensível de uma rede Windows. Compare com os hosts habituais do c.evans: `grep c.evans logs/sample_auth_logs.csv | cut -d, -f7 | sort | uniq -c`."
+      }
+    },
+    {
+      "id": "linux-13",
+      "environments": ["linux"],
+      "level": 4,
+      "topic": "json",
+      "files": ["logs/entra_signins.json"],
+      "title": {"en": "Cloud sign-ins with jq", "pt-BR": "Logins na nuvem com jq"},
+      "question": {
+        "en": "`logs/entra_signins.json` holds Microsoft Entra ID sign-ins in the `value` list. Error code `50126` means a wrong password. How many sign-ins have `status.errorCode` 50126?",
+        "pt-BR": "`logs/entra_signins.json` tem logins do Microsoft Entra ID na lista `value`. O código de erro `50126` significa senha errada. Quantos logins têm `status.errorCode` 50126?"
+      },
+      "hints": [
+        {"en": "`jq '.value[0]' logs/entra_signins.json` shows the first sign-in in a readable way.", "pt-BR": "`jq '.value[0]' logs/entra_signins.json` mostra o primeiro login de um jeito legível."},
+        {"en": "`select(...)` keeps matching items; wrap the result in `[ ]` and use `length` to count.", "pt-BR": "`select(...)` deixa só os itens que batem; coloque o resultado entre `[ ]` e use `length` para contar."}
+      ],
+      "answers": ["7"],
+      "solution": "jq '[.value[] | select(.status.errorCode == 50126)] | length' logs/entra_signins.json",
+      "explanation": {
+        "en": "Cloud logs are JSON, and `jq` is the `grep` + `awk` of JSON. Try also `jq -r '.value[] | [.userPrincipalName, .ipAddress, .status.errorCode] | @tsv' logs/entra_signins.json` to see the whole story as a table.",
+        "pt-BR": "Logs de nuvem são JSON, e o `jq` é o `grep` + `awk` do JSON. Experimente também `jq -r '.value[] | [.userPrincipalName, .ipAddress, .status.errorCode] | @tsv' logs/entra_signins.json` para ver a história toda como tabela."
+      }
+    },
+    {
+      "id": "linux-14",
+      "environments": ["linux"],
+      "level": 4,
+      "topic": "windows",
+      "files": ["logs/windows_security.xml"],
+      "title": {"en": "Windows events from Linux", "pt-BR": "Eventos do Windows no Linux"},
+      "question": {
+        "en": "`logs/windows_security.xml` is a Windows Security log saved as XML, one event per line. Event ID 4625 is a failed logon. How many 4625 events are there?",
+        "pt-BR": "`logs/windows_security.xml` é um log de segurança do Windows salvo em XML, um evento por linha. O Event ID 4625 é um login com falha. Quantos eventos 4625 existem?"
+      },
+      "hints": [
+        {"en": "The ID is written as `<EventID>4625</EventID>`.", "pt-BR": "O ID aparece como `<EventID>4625</EventID>`."},
+        {"en": "Search for the whole tag, not just `4625`: the number could appear elsewhere (a port, a record ID).", "pt-BR": "Procure a tag inteira, e não só `4625`: o número pode aparecer em outro lugar (uma porta, um ID de registro)."}
+      ],
+      "answers": ["7"],
+      "solution": "grep -c '<EventID>4625</EventID>' logs/windows_security.xml",
+      "explanation": {
+        "en": "Searching for the exact tag avoids false matches. Phase 2 of the Terminal tab will do the same with PowerShell, the way Windows administrators query these events.",
+        "pt-BR": "Procurar a tag exata evita resultados falsos. A Fase 2 da aba Terminal vai fazer o mesmo com PowerShell, do jeito que administradores Windows consultam esses eventos."
+      }
+    }
+  ]
+}
