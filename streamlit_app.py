@@ -39,7 +39,7 @@ EXAMPLES_DIR = Path(__file__).parent / "data" / "examples"
 EXAMPLE_FILES = ["linux_auth.log", "windows_security.xml", "windows_security.evtx", "entra_signins.json"]
 EXAMPLE_YEAR = 2026  # the classic syslog lines in linux_auth.log have no year
 TAB_IDS = ["overview", "alerts", "cases", "events", "investigation", "quality", "export", "terminal", "about"]
-TERMINAL_ENVIRONMENT = "linux"
+TERMINAL_CODE_LANGUAGE = {"linux": "bash", "powershell": "powershell"}  # how st.code highlights solutions
 
 st.set_page_config(page_title="Mini SOC Lab", page_icon=":shield:", layout="wide")
 
@@ -869,14 +869,14 @@ with tab_export:
         st.caption(T("ui.export.caption"))
 
 # ---------------------------------------------------------------------------
-# Terminal (phase 1: a real Linux shell in a local Docker container, see soc_lab/terminal.py)
+# Terminal (bash and PowerShell in a local Docker container, see soc_lab/terminal.py)
 # ---------------------------------------------------------------------------
 @st.cache_resource
 def terminal_challenge_set():
     return challenges.load_challenges()
 
 
-def render_terminal_panel(challenge_set) -> None:
+def render_terminal_panel(challenge_set, environment: str) -> None:
     status = terminal.docker_status()
     if status.state == "browser":
         st.info(T("ui.terminal.browser"))
@@ -886,13 +886,13 @@ def render_terminal_panel(challenge_set) -> None:
         st.markdown(T("ui.terminal.setup"))
         st.button(T("ui.terminal.recheck"), key="terminal_recheck")
         return
-    url = terminal.terminal_url()
+    url = terminal.terminal_url(environment=environment)
     if not terminal.container_running():
         st.info(T("ui.terminal.stopped"))
         if st.button(T("ui.terminal.start"), type="primary", icon=":material/terminal:", key="terminal_start"):
             with st.spinner(T("ui.terminal.starting")):
                 try:
-                    terminal.start(challenge_set.files(TERMINAL_ENVIRONMENT))
+                    terminal.start(challenge_set.files())  # one container serves both shells
                 except (terminal.TerminalError, OSError) as exc:
                     st.error(T("ui.terminal.error", detail=str(exc)))
                     return
@@ -906,16 +906,19 @@ def render_terminal_panel(challenge_set) -> None:
         except terminal.TerminalError as exc:
             st.error(T("ui.terminal.error", detail=str(exc)))
         st.rerun()
+    if environment == "powershell":
+        st.caption(T("ui.terminal.powershell_note"))
     st.iframe(url, height=560, alt=T("ui.terminal.iframe_alt"))
     st.caption(T("ui.terminal.running_caption", url=url))
 
 
-def render_challenges(challenge_set) -> None:
-    items = challenge_set.for_environment(TERMINAL_ENVIRONMENT)
-    progress_file = challenges.progress_path(ANSWERS_DIR, TERMINAL_ENVIRONMENT)
-    if "terminal_progress" not in st.session_state:
-        st.session_state["terminal_progress"] = challenges.load_progress(progress_file)
-    progress = st.session_state["terminal_progress"]
+def render_challenges(challenge_set, environment: str) -> None:
+    items = challenge_set.for_environment(environment)
+    progress_file = challenges.progress_path(ANSWERS_DIR, environment)
+    progress_key = f"terminal_progress_{environment}"
+    if progress_key not in st.session_state:
+        st.session_state[progress_key] = challenges.load_progress(progress_file)
+    progress = st.session_state[progress_key]
     solved, revealed = progress["solved"], progress["revealed"]
     done = sum(c.id in solved for c in items)
     st.progress(done / len(items), text=T("ui.terminal.progress", solved=done, total=len(items)))
@@ -925,7 +928,7 @@ def render_challenges(challenge_set) -> None:
         return f"{mark} {challenge_id} · {challenge_set.get(challenge_id).text('title', lang)}"
 
     chosen = st.selectbox(T("ui.terminal.challenge"), [c.id for c in items], format_func=label,
-                          key="terminal_challenge")
+                          key=f"terminal_challenge_{environment}")
     challenge = challenge_set.get(chosen)
     st.markdown(f"#### {challenge.text('title', lang)}")
     st.caption(T("ui.terminal.meta", level=challenge.level, topic=T(f"ui.terminal.topic.{challenge.topic}"),
@@ -953,7 +956,7 @@ def render_challenges(challenge_set) -> None:
         if challenge.id not in solved:
             st.caption(T("ui.terminal.revealed_note"))
         st.markdown(T("ui.terminal.solution"))
-        st.code(challenge.solution, language="bash")
+        st.code(challenge.solution, language=TERMINAL_CODE_LANGUAGE.get(environment, "bash"))
         st.markdown(T("ui.terminal.why"))
         st.markdown(challenge.text("explanation", lang))
     elif st.button(T("ui.terminal.reveal"), icon=":material/visibility:", key=f"terminal_reveal_{challenge.id}"):
@@ -970,13 +973,16 @@ with tab_terminal:
     except challenges.ChallengeError as exc:
         st.error(T("ui.terminal.load_error", detail=str(exc)))
     else:
+        terminal_env = st.segmented_control(T("ui.terminal.shell"), list(challenges.ENVIRONMENTS),
+                                            format_func=lambda env: T(f"ui.terminal.env.{env}"),
+                                            default=challenges.ENVIRONMENTS[0], required=True, key="terminal_env")
         col_tasks, col_shell = st.columns([2, 3], gap="large")
         with col_tasks:
-            render_challenges(terminal_set)
+            render_challenges(terminal_set, terminal_env)
         with col_shell:
             # Asking Docker takes a moment, so it only happens while this tab is open.
             if st.session_state.get("active_tab") == "terminal":
-                render_terminal_panel(terminal_set)
+                render_terminal_panel(terminal_set, terminal_env)
 
 # ---------------------------------------------------------------------------
 # About

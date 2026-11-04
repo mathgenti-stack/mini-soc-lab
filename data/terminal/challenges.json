@@ -7,6 +7,17 @@
       "files": {
         "logs/linux_auth.log": "data/examples/linux_auth.log",
         "logs/windows_security.xml": "data/examples/windows_security.xml",
+        "logs/windows_security.evtx": "data/examples/windows_security.evtx",
+        "logs/entra_signins.json": "data/examples/entra_signins.json",
+        "logs/sample_auth_logs.csv": "data/sample_auth_logs.csv"
+      }
+    },
+    "powershell": {
+      "home": "/home/analyst",
+      "files": {
+        "logs/linux_auth.log": "data/examples/linux_auth.log",
+        "logs/windows_security.xml": "data/examples/windows_security.xml",
+        "logs/windows_security.evtx": "data/examples/windows_security.evtx",
         "logs/entra_signins.json": "data/examples/entra_signins.json",
         "logs/sample_auth_logs.csv": "data/sample_auth_logs.csv"
       }
@@ -316,8 +327,316 @@
       "answers": ["7"],
       "solution": "grep -c '<EventID>4625</EventID>' logs/windows_security.xml",
       "explanation": {
-        "en": "Searching for the exact tag avoids false matches. Phase 2 of the Terminal tab will do the same with PowerShell, the way Windows administrators query these events.",
-        "pt-BR": "Procurar a tag exata evita resultados falsos. A Fase 2 da aba Terminal vai fazer o mesmo com PowerShell, do jeito que administradores Windows consultam esses eventos."
+        "en": "Searching for the exact tag avoids false matches. The PowerShell challenges do the same with `Get-WinEvent`, the way Windows administrators query these events.",
+        "pt-BR": "Procurar a tag exata evita resultados falsos. Os desafios de PowerShell fazem o mesmo com o `Get-WinEvent`, do jeito que administradores Windows consultam esses eventos."
+      }
+    },
+    {
+      "id": "ps-01",
+      "environments": ["powershell"],
+      "level": 1,
+      "topic": "basics",
+      "files": ["logs/linux_auth.log", "logs/windows_security.xml", "logs/windows_security.evtx", "logs/entra_signins.json", "logs/sample_auth_logs.csv"],
+      "title": {"en": "What is in the logs folder?", "pt-BR": "O que tem na pasta de logs?"},
+      "question": {
+        "en": "In PowerShell, commands return **objects**, not text. `Get-ChildItem logs` lists the folder (`ls` and `dir` are aliases for it). How many files are in `logs`? Answer with the number only.",
+        "pt-BR": "No PowerShell, os comandos devolvem **objetos**, não texto. `Get-ChildItem logs` lista a pasta (`ls` e `dir` são apelidos dele). Quantos arquivos há em `logs`? Responda só o número."
+      },
+      "hints": [
+        {"en": "Put the command in parentheses and read its `.Count` property.", "pt-BR": "Coloque o comando entre parênteses e leia a propriedade `.Count`."},
+        {"en": "`Measure-Object` also counts any list: `Get-ChildItem logs | Measure-Object`.", "pt-BR": "O `Measure-Object` também conta qualquer lista: `Get-ChildItem logs | Measure-Object`."}
+      ],
+      "answers": ["5"],
+      "solution": "(Get-ChildItem logs).Count",
+      "explanation": {
+        "en": "`(...)` runs the command first and gives you the result as a list of objects; `.Count` is how many there are. The same pattern counts anything: users, events, failed logons. This is the big difference from bash: there you count lines of text (`wc -l`), here you count objects.",
+        "pt-BR": "`(...)` roda o comando primeiro e entrega o resultado como uma lista de objetos; `.Count` diz quantos são. O mesmo padrão conta qualquer coisa: usuários, eventos, logins com falha. Essa é a grande diferença para o bash: lá você conta linhas de texto (`wc -l`), aqui você conta objetos."
+      }
+    },
+    {
+      "id": "ps-02",
+      "environments": ["powershell"],
+      "level": 1,
+      "topic": "csv",
+      "files": ["logs/sample_auth_logs.csv"],
+      "title": {"en": "A CSV becomes objects", "pt-BR": "Um CSV vira objetos"},
+      "question": {
+        "en": "`Import-Csv logs/sample_auth_logs.csv` reads the two-week dataset and turns each row into an object, with one property per column. How many rows (events) are there, not counting the header?",
+        "pt-BR": "`Import-Csv logs/sample_auth_logs.csv` lê o dataset de duas semanas e transforma cada linha num objeto, com uma propriedade por coluna. Quantas linhas (eventos) existem, sem contar o cabeçalho?"
+      },
+      "hints": [
+        {"en": "Same trick as before: parentheses and `.Count`.", "pt-BR": "O mesmo truque de antes: parênteses e `.Count`."},
+        {"en": "The header becomes the property names, so it is not counted.", "pt-BR": "O cabeçalho vira os nomes das propriedades, então não entra na conta."}
+      ],
+      "answers": ["1017"],
+      "solution": "(Import-Csv logs/sample_auth_logs.csv).Count",
+      "explanation": {
+        "en": "`Import-Csv` uses the first line as column names, so the header is never counted or filtered by mistake (`wc -l` in bash gives one more). Try `Import-Csv logs/sample_auth_logs.csv | Select-Object -First 3` to see the objects.",
+        "pt-BR": "O `Import-Csv` usa a primeira linha como nomes das colunas, então o cabeçalho nunca é contado ou filtrado por engano (o `wc -l` do bash dá um a mais). Experimente `Import-Csv logs/sample_auth_logs.csv | Select-Object -First 3` para ver os objetos."
+      }
+    },
+    {
+      "id": "ps-03",
+      "environments": ["powershell"],
+      "level": 1,
+      "topic": "objects",
+      "files": ["logs/sample_auth_logs.csv"],
+      "title": {"en": "Which column is the Event ID?", "pt-BR": "Qual coluna é o Event ID?"},
+      "question": {
+        "en": "`Get-Member` lists the properties of an object. In the dataset, which column holds the Windows **Event ID** (4624, 4625...)? Careful: two columns have *event* in the name. Answer with the column name.",
+        "pt-BR": "O `Get-Member` lista as propriedades de um objeto. No dataset, qual coluna guarda o **Event ID** do Windows (4624, 4625...)? Cuidado: duas colunas têm *event* no nome. Responda com o nome da coluna."
+      },
+      "hints": [
+        {"en": "`Import-Csv logs/sample_auth_logs.csv | Get-Member -MemberType NoteProperty` lists the columns.", "pt-BR": "`Import-Csv logs/sample_auth_logs.csv | Get-Member -MemberType NoteProperty` lista as colunas."},
+        {"en": "Look at one row with `Select-Object -First 1`: which column has values like 4624?", "pt-BR": "Olhe uma linha com `Select-Object -First 1`: qual coluna tem valores como 4624?"}
+      ],
+      "answers": ["event_code"],
+      "solution": "Import-Csv logs/sample_auth_logs.csv | Get-Member -MemberType NoteProperty | Where-Object Name -like '*code*' | Select-Object -ExpandProperty Name",
+      "explanation": {
+        "en": "`event_id` is the lab's own record number (EVT-000001); `event_code` is the Windows Event ID. Mixing up a record number with an event type is a common mistake with a new log source: always look at a few values before you filter.",
+        "pt-BR": "`event_id` é o número de registro do próprio lab (EVT-000001); `event_code` é o Event ID do Windows. Confundir número de registro com tipo de evento é um erro comum com uma fonte de log nova: sempre olhe alguns valores antes de filtrar."
+      }
+    },
+    {
+      "id": "ps-04",
+      "environments": ["powershell"],
+      "level": 2,
+      "topic": "csv",
+      "files": ["logs/sample_auth_logs.csv"],
+      "title": {"en": "Count the failed logons", "pt-BR": "Conte os logins com falha"},
+      "question": {
+        "en": "Event ID **4625** means *an account failed to log on*. Using `Where-Object`, how many 4625 events are in the dataset?",
+        "pt-BR": "O Event ID **4625** significa *uma conta falhou ao fazer logon*. Usando `Where-Object`, quantos eventos 4625 existem no dataset?"
+      },
+      "hints": [
+        {"en": "`Where-Object event_code -eq 4625` keeps only the rows where that column equals 4625.", "pt-BR": "`Where-Object event_code -eq 4625` mantém só as linhas em que essa coluna é igual a 4625."},
+        {"en": "Wrap the whole pipeline in parentheses and read `.Count`.", "pt-BR": "Coloque o pipeline inteiro entre parênteses e leia `.Count`."}
+      ],
+      "answers": ["165"],
+      "solution": "(Import-Csv logs/sample_auth_logs.csv | Where-Object event_code -eq 4625).Count",
+      "explanation": {
+        "en": "`Where-Object` is PowerShell's `grep`, but it filters on a **column**, not on text anywhere in the line. `-eq` means *equals*; there are also `-ne`, `-gt`, `-lt`, `-like` (with `*` wildcards) and `-match` (regular expressions). It is the same 165 as challenge linux-08, found by another path.",
+        "pt-BR": "O `Where-Object` é o `grep` do PowerShell, mas filtra por **coluna**, e não por texto em qualquer parte da linha. `-eq` significa *igual*; também existem `-ne`, `-gt`, `-lt`, `-like` (com curinga `*`) e `-match` (expressões regulares). É o mesmo 165 do desafio linux-08, encontrado por outro caminho."
+      }
+    },
+    {
+      "id": "ps-05",
+      "environments": ["powershell"],
+      "level": 2,
+      "topic": "pipes",
+      "files": ["logs/sample_auth_logs.csv"],
+      "title": {"en": "Who fails the most?", "pt-BR": "Quem mais falha?"},
+      "question": {
+        "en": "`Group-Object` groups objects by a property and counts each group, like `sort | uniq -c` in bash. Among the 4625 events, which account has the most failures?",
+        "pt-BR": "O `Group-Object` agrupa objetos por uma propriedade e conta cada grupo, como o `sort | uniq -c` do bash. Entre os eventos 4625, qual conta tem mais falhas?"
+      },
+      "hints": [
+        {"en": "After the filter, `Group-Object username` makes one group per account, each with a `Count`.", "pt-BR": "Depois do filtro, `Group-Object username` cria um grupo por conta, cada um com um `Count`."},
+        {"en": "`Sort-Object Count -Descending` puts the biggest group first; `Select-Object -First 1 -ExpandProperty Name` shows only its name.", "pt-BR": "`Sort-Object Count -Descending` coloca o maior grupo primeiro; `Select-Object -First 1 -ExpandProperty Name` mostra só o nome dele."}
+      ],
+      "answers": ["svc_backup"],
+      "solution": "Import-Csv logs/sample_auth_logs.csv | Where-Object event_code -eq 4625 | Group-Object username | Sort-Object Count -Descending | Select-Object -First 1 -ExpandProperty Name",
+      "explanation": {
+        "en": "The noisiest account is not always the one under attack. `svc_backup` is a service account, and the next challenge shows why it fails. A ranking with `Group-Object` tells you where to look first, not what happened.",
+        "pt-BR": "A conta com mais falhas nem sempre é a que está sendo atacada. `svc_backup` é uma conta de serviço, e o próximo desafio mostra por que ela falha. Um ranking com `Group-Object` diz onde olhar primeiro, e não o que aconteceu."
+      }
+    },
+    {
+      "id": "ps-06",
+      "environments": ["powershell"],
+      "level": 2,
+      "topic": "pipes",
+      "files": ["logs/sample_auth_logs.csv"],
+      "title": {"en": "Why does the service account fail?", "pt-BR": "Por que a conta de serviço falha?"},
+      "question": {
+        "en": "Look only at the 4625 events of `svc_backup`. The `failure_reason` column says why each logon failed. Which reason do they all have?",
+        "pt-BR": "Olhe só os eventos 4625 da `svc_backup`. A coluna `failure_reason` diz por que cada logon falhou. Qual motivo todos eles têm?"
+      },
+      "hints": [
+        {"en": "Two conditions go in a script block: `Where-Object { $_.username -eq 'svc_backup' -and $_.event_code -eq 4625 }`. `$_` is the current row.", "pt-BR": "Duas condições vão num bloco de script: `Where-Object { $_.username -eq 'svc_backup' -and $_.event_code -eq 4625 }`. `$_` é a linha atual."},
+        {"en": "Then `Group-Object failure_reason` shows each reason once.", "pt-BR": "Depois, `Group-Object failure_reason` mostra cada motivo uma vez."}
+      ],
+      "answers": ["EXPIRED_PASSWORD", "expired password"],
+      "solution": "Import-Csv logs/sample_auth_logs.csv | Where-Object { $_.username -eq 'svc_backup' -and $_.event_code -eq 4625 } | Group-Object failure_reason | Select-Object -ExpandProperty Name",
+      "explanation": {
+        "en": "A service account with an expired password keeps retrying on a schedule, from the same internal server: many failures, but no attack. It still needs a ticket, because the backup is not running. On Windows the same answer is in the `SubStatus` of event 4625 (0xC0000071 = password expired).",
+        "pt-BR": "Uma conta de serviço com senha expirada continua tentando no horário agendado, sempre do mesmo servidor interno: muitas falhas, mas nenhum ataque. Mesmo assim precisa de um chamado, porque o backup não está rodando. No Windows, a mesma resposta está no `SubStatus` do evento 4625 (0xC0000071 = senha expirada)."
+      }
+    },
+    {
+      "id": "ps-07",
+      "environments": ["powershell"],
+      "level": 2,
+      "topic": "windows",
+      "files": ["logs/windows_security.xml"],
+      "title": {"en": "Open a Windows XML export", "pt-BR": "Abra um export XML do Windows"},
+      "question": {
+        "en": "`logs/windows_security.xml` is a Windows Security log exported as XML. PowerShell reads XML into objects: `$log = [xml](Get-Content logs/windows_security.xml -Raw)`. Then `$log.Events.Event` is the list of events. How many events are there?",
+        "pt-BR": "`logs/windows_security.xml` é um log de segurança do Windows exportado em XML. O PowerShell lê XML como objetos: `$log = [xml](Get-Content logs/windows_security.xml -Raw)`. Aí `$log.Events.Event` é a lista de eventos. Quantos eventos existem?"
+      },
+      "hints": [
+        {"en": "`-Raw` reads the file as one string, which `[xml]` needs.", "pt-BR": "O `-Raw` lê o arquivo como um texto só, que é o que o `[xml]` precisa."},
+        {"en": "Read `.Count` on `$log.Events.Event`.", "pt-BR": "Leia o `.Count` de `$log.Events.Event`."}
+      ],
+      "answers": ["17"],
+      "solution": "$log = [xml](Get-Content logs/windows_security.xml -Raw); $log.Events.Event.Count",
+      "explanation": {
+        "en": "`[xml]` turns the file into a tree you walk with dots, for example `$log.Events.Event[0].System.EventID`. It works on any computer, which helps when a colleague sends you events exported from Event Viewer (*Save All Events As* → XML).",
+        "pt-BR": "O `[xml]` transforma o arquivo numa árvore que você percorre com pontos, por exemplo `$log.Events.Event[0].System.EventID`. Funciona em qualquer computador, o que ajuda quando um colega manda eventos exportados do Visualizador de Eventos (*Salvar Todos os Eventos Como* → XML)."
+      }
+    },
+    {
+      "id": "ps-08",
+      "environments": ["powershell"],
+      "level": 3,
+      "topic": "windows",
+      "files": ["logs/windows_security.xml"],
+      "title": {"en": "Who unlocked the account?", "pt-BR": "Quem desbloqueou a conta?"},
+      "question": {
+        "en": "In the same XML, `j.smith` was locked out (event **4740**) and later unlocked (event **4767**). In 4767, `SubjectUserName` is the person who did the unlock. Who was it?",
+        "pt-BR": "No mesmo XML, `j.smith` foi bloqueado (evento **4740**) e depois desbloqueado (evento **4767**). No 4767, `SubjectUserName` é quem fez o desbloqueio. Quem foi?"
+      },
+      "hints": [
+        {"en": "Filter the events: `$log.Events.Event | Where-Object { $_.System.EventID -eq 4767 }`.", "pt-BR": "Filtre os eventos: `$log.Events.Event | Where-Object { $_.System.EventID -eq 4767 }`."},
+        {"en": "The fields are in `.EventData.Data`, each with a `Name` and its value in `'#text'`. Use `Where-Object Name -eq 'SubjectUserName'`.", "pt-BR": "Os campos ficam em `.EventData.Data`, cada um com um `Name` e o valor em `'#text'`. Use `Where-Object Name -eq 'SubjectUserName'`."}
+      ],
+      "answers": ["h.wright"],
+      "solution": "$log = [xml](Get-Content logs/windows_security.xml -Raw); $unlock = $log.Events.Event | Where-Object { $_.System.EventID -eq 4767 }; ($unlock.EventData.Data | Where-Object Name -eq 'SubjectUserName').'#text'",
+      "explanation": {
+        "en": "A lockout, an unlock by the help desk and then a normal logon from the user's own workstation is the usual *I forgot my password* story. Check who unlocked and how fast: an unlock by an unexpected account, or right after an attack, deserves a question.",
+        "pt-BR": "Bloqueio, desbloqueio pelo suporte e depois um logon normal da estação do próprio usuário é a história comum de *esqueci minha senha*. Confira quem desbloqueou e em quanto tempo: um desbloqueio feito por uma conta inesperada, ou logo depois de um ataque, merece uma pergunta."
+      }
+    },
+    {
+      "id": "ps-09",
+      "environments": ["powershell"],
+      "level": 3,
+      "topic": "investigation",
+      "files": ["logs/sample_auth_logs.csv"],
+      "title": {"en": "A lockout from outside", "pt-BR": "Um bloqueio vindo de fora"},
+      "question": {
+        "en": "Back to the dataset. There are two account lockouts (event **4740**). One was caused from an external IP address (not `10.*`). Which account?",
+        "pt-BR": "De volta ao dataset. Há dois bloqueios de conta (evento **4740**). Um foi causado a partir de um IP externo (que não é `10.*`). Qual conta?"
+      },
+      "hints": [
+        {"en": "Two conditions: `$_.event_code -eq 4740` and `$_.source_ip -notlike '10.*'`.", "pt-BR": "Duas condições: `$_.event_code -eq 4740` e `$_.source_ip -notlike '10.*'`."},
+        {"en": "`Select-Object -ExpandProperty username` prints only the name.", "pt-BR": "`Select-Object -ExpandProperty username` mostra só o nome."}
+      ],
+      "answers": ["m.jones"],
+      "solution": "Import-Csv logs/sample_auth_logs.csv | Where-Object { $_.event_code -eq 4740 -and $_.source_ip -notlike '10.*' } | Select-Object -ExpandProperty username",
+      "explanation": {
+        "en": "A lockout caused from the internet means someone outside is guessing that account's password. Here it is 203.0.113.45, the SSH brute-force address from the Linux challenges, with 25 failures for `m.jones`. The lockout stopped the guessing, but the attacker knows a valid account name: look for any later success from that address.",
+        "pt-BR": "Um bloqueio causado pela internet significa que alguém de fora está tentando adivinhar a senha dessa conta. Aqui é o 203.0.113.45, o endereço do brute force SSH dos desafios de Linux, com 25 falhas para `m.jones`. O bloqueio parou as tentativas, mas o atacante sabe um nome de conta válido: procure qualquer sucesso posterior desse endereço."
+      }
+    },
+    {
+      "id": "ps-10",
+      "environments": ["powershell"],
+      "level": 3,
+      "topic": "investigation",
+      "files": ["logs/sample_auth_logs.csv"],
+      "title": {"en": "Forgot the password?", "pt-BR": "Esqueceu a senha?"},
+      "question": {
+        "en": "The other lockout was `e.wilson`, on 12 October 2026. How many failed logons (4625) did `e.wilson` have that day?",
+        "pt-BR": "O outro bloqueio foi de `e.wilson`, em 12 de outubro de 2026. Quantos logins com falha (4625) `e.wilson` teve nesse dia?"
+      },
+      "hints": [
+        {"en": "Times are text like `2026-10-12T08:40:21Z`, so `$_.timestamp -like '2026-10-12*'` keeps that day.", "pt-BR": "As datas são texto como `2026-10-12T08:40:21Z`, então `$_.timestamp -like '2026-10-12*'` mantém esse dia."},
+        {"en": "Combine the three conditions with `-and`, then read `.Count`.", "pt-BR": "Junte as três condições com `-and` e leia o `.Count`."}
+      ],
+      "answers": ["10"],
+      "solution": "(Import-Csv logs/sample_auth_logs.csv | Where-Object { $_.username -eq 'e.wilson' -and $_.event_code -eq 4625 -and $_.timestamp -like '2026-10-12*' }).Count",
+      "explanation": {
+        "en": "Ten failures in under three minutes, all from the user's own workstation with `BAD_PASSWORD`, then a lockout, an unlock and normal logons: an employee who forgot the password. Comparing the two lockouts (an external address against the user's own workstation) is the heart of triage.",
+        "pt-BR": "Dez falhas em menos de três minutos, todas da estação do próprio usuário com `BAD_PASSWORD`, depois bloqueio, desbloqueio e logons normais: um funcionário que esqueceu a senha. Comparar os dois bloqueios (um endereço externo contra a estação do próprio usuário) é o coração da triagem."
+      }
+    },
+    {
+      "id": "ps-11",
+      "environments": ["powershell"],
+      "level": 3,
+      "topic": "investigation",
+      "files": ["logs/sample_auth_logs.csv"],
+      "title": {"en": "When did the attacker get in?", "pt-BR": "Quando o atacante entrou?"},
+      "question": {
+        "en": "The password spray from `203.0.113.88` found one valid password. Find the successful logon (4624) from that address. What is its `timestamp`? Copy it as it is in the file.",
+        "pt-BR": "O password spray vindo de `203.0.113.88` achou uma senha válida. Encontre o logon com sucesso (4624) desse endereço. Qual é o `timestamp` dele? Copie como está no arquivo."
+      },
+      "hints": [
+        {"en": "`Where-Object { $_.source_ip -eq '203.0.113.88' -and $_.event_code -eq 4624 }`", "pt-BR": "`Where-Object { $_.source_ip -eq '203.0.113.88' -and $_.event_code -eq 4624 }`"},
+        {"en": "`Select-Object -ExpandProperty timestamp` prints only the time.", "pt-BR": "`Select-Object -ExpandProperty timestamp` mostra só o horário."}
+      ],
+      "answers": ["2026-10-12T11:11:16Z", "2026-10-12 11:11:16"],
+      "solution": "Import-Csv logs/sample_auth_logs.csv | Where-Object { $_.source_ip -eq '203.0.113.88' -and $_.event_code -eq 4624 } | Select-Object -ExpandProperty timestamp",
+      "explanation": {
+        "en": "The first success starts the incident clock: everything the account did after 11:11:16 is suspect (challenge linux-11 found the account, `l.taylor`). The `Z` means UTC. Always give the time zone in a report.",
+        "pt-BR": "O primeiro sucesso inicia o relógio do incidente: tudo o que a conta fez depois de 11:11:16 é suspeito (o desafio linux-11 achou a conta, `l.taylor`). O `Z` significa UTC. Sempre informe o fuso horário num relatório."
+      }
+    },
+    {
+      "id": "ps-12",
+      "environments": ["powershell"],
+      "level": 4,
+      "topic": "evtx",
+      "files": ["logs/windows_security.evtx"],
+      "title": {"en": "Get-WinEvent", "pt-BR": "Get-WinEvent"},
+      "question": {
+        "en": "On Windows, analysts read event logs with `Get-WinEvent`. Here it is a lab version that reads `.evtx` files, since live logs exist only on Windows. `Get-WinEvent -FilterHashtable @{ Path = \"$HOME/logs/windows_security.evtx\"; Id = 4625 }` filters by Event ID. How many 4625 events does the `.evtx` file have?",
+        "pt-BR": "No Windows, analistas leem logs de eventos com o `Get-WinEvent`. Aqui ele é uma versão do lab que lê arquivos `.evtx`, já que logs ao vivo só existem no Windows. `Get-WinEvent -FilterHashtable @{ Path = \"$HOME/logs/windows_security.evtx\"; Id = 4625 }` filtra pelo Event ID. Quantos eventos 4625 o arquivo `.evtx` tem?"
+      },
+      "hints": [
+        {"en": "Try `Get-WinEvent -Path logs/windows_security.evtx` first: each event shows its time, ID and message.", "pt-BR": "Experimente primeiro `Get-WinEvent -Path logs/windows_security.evtx`: cada evento mostra horário, ID e mensagem."},
+        {"en": "Wrap the `-FilterHashtable` command in parentheses and read `.Count`.", "pt-BR": "Coloque o comando com `-FilterHashtable` entre parênteses e leia o `.Count`."}
+      ],
+      "answers": ["7"],
+      "solution": "(Get-WinEvent -FilterHashtable @{ Path = \"$HOME/logs/windows_security.evtx\"; Id = 4625 }).Count",
+      "explanation": {
+        "en": "`-FilterHashtable` filters while reading, which on a real Security log with millions of events is much faster than `Get-WinEvent | Where-Object`. It is the same 7 as challenge linux-14: the `.evtx` is the binary original and the XML is an export. On Windows you would write `@{ LogName = 'Security'; Id = 4625 }` to read the live log.",
+        "pt-BR": "O `-FilterHashtable` filtra durante a leitura, o que num log de segurança real, com milhões de eventos, é muito mais rápido que `Get-WinEvent | Where-Object`. É o mesmo 7 do desafio linux-14: o `.evtx` é o original binário e o XML é um export. No Windows você escreveria `@{ LogName = 'Security'; Id = 4625 }` para ler o log ao vivo."
+      }
+    },
+    {
+      "id": "ps-13",
+      "environments": ["powershell"],
+      "level": 4,
+      "topic": "evtx",
+      "files": ["logs/windows_security.evtx"],
+      "title": {"en": "What time was the lockout?", "pt-BR": "A que horas foi o bloqueio?"},
+      "question": {
+        "en": "With `Get-WinEvent`, find the account lockout (4740) in the `.evtx` file. At what time did it happen? Answer as `HH:mm:ss` (the terminal's clock is UTC).",
+        "pt-BR": "Com o `Get-WinEvent`, encontre o bloqueio de conta (4740) no arquivo `.evtx`. A que horas aconteceu? Responda no formato `HH:mm:ss` (o relógio do terminal é UTC)."
+      },
+      "hints": [
+        {"en": "`TimeCreated` is a date object, not text.", "pt-BR": "O `TimeCreated` é um objeto de data, e não texto."},
+        {"en": "`.TimeCreated.ToString('HH:mm:ss')` formats it.", "pt-BR": "`.TimeCreated.ToString('HH:mm:ss')` formata a data."}
+      ],
+      "answers": ["09:12:45"],
+      "solution": "(Get-WinEvent -FilterHashtable @{ Path = \"$HOME/logs/windows_security.evtx\"; Id = 4740 }).TimeCreated.ToString('HH:mm:ss')",
+      "explanation": {
+        "en": "Six failures from 09:10:00 to 09:12:30, then a lockout at 09:12:45: the lockout policy did its job. Dates as objects let you calculate, for example the time between two events with `$b.TimeCreated - $a.TimeCreated`. Windows shows `TimeCreated` in the computer's time zone: check it before comparing with other sources.",
+        "pt-BR": "Seis falhas de 09:10:00 a 09:12:30 e um bloqueio às 09:12:45: a política de bloqueio funcionou. Datas como objetos permitem fazer contas, por exemplo o tempo entre dois eventos com `$b.TimeCreated - $a.TimeCreated`. O Windows mostra o `TimeCreated` no fuso do computador: confira antes de comparar com outras fontes."
+      }
+    },
+    {
+      "id": "ps-14",
+      "environments": ["powershell"],
+      "level": 4,
+      "topic": "json",
+      "files": ["logs/entra_signins.json"],
+      "title": {"en": "Entra ID: who was compromised?", "pt-BR": "Entra ID: quem foi comprometido?"},
+      "question": {
+        "en": "`logs/entra_signins.json` has Microsoft Entra ID sign-ins. `ConvertFrom-Json` turns JSON into objects, like `jq`. The spray address `203.0.113.88` also hit Entra ID. Which account signed in **successfully** (`status.errorCode` 0) from it? Answer with the `userPrincipalName`.",
+        "pt-BR": "`logs/entra_signins.json` tem logins do Microsoft Entra ID. O `ConvertFrom-Json` transforma JSON em objetos, como o `jq`. O endereço do spray, `203.0.113.88`, também atacou o Entra ID. Qual conta fez login **com sucesso** (`status.errorCode` 0) a partir dele? Responda com o `userPrincipalName`."
+      },
+      "hints": [
+        {"en": "`(Get-Content logs/entra_signins.json -Raw | ConvertFrom-Json).value` is the list of sign-ins.", "pt-BR": "`(Get-Content logs/entra_signins.json -Raw | ConvertFrom-Json).value` é a lista de logins."},
+        {"en": "Nested fields use dots: `$_.status.errorCode -eq 0`.", "pt-BR": "Campos aninhados usam pontos: `$_.status.errorCode -eq 0`."}
+      ],
+      "answers": ["l.taylor@example.com", "l.taylor"],
+      "solution": "(Get-Content logs/entra_signins.json -Raw | ConvertFrom-Json).value | Where-Object { $_.ipAddress -eq '203.0.113.88' -and $_.status.errorCode -eq 0 } | Select-Object -ExpandProperty userPrincipalName",
+      "explanation": {
+        "en": "Failures with 50126 (wrong password) on many accounts and then one success: the same pattern as the on-premises logs, for the same account. Confirmed in two sources, the case is solid: reset the password, revoke the sessions and check what the account did after the sign-in.",
+        "pt-BR": "Falhas com 50126 (senha errada) em várias contas e depois um sucesso: o mesmo padrão dos logs locais, para a mesma conta. Confirmado em duas fontes, o caso fica sólido: redefina a senha, revogue as sessões e veja o que a conta fez depois do login."
       }
     }
   ]

@@ -1,15 +1,16 @@
-"""Terminal tab (phase 1): challenges file, answer checking, Docker control and the dashboard tab."""
+"""Terminal tab (bash and PowerShell): challenges file, answer checking, Docker control and the dashboard tab."""
 
 import csv
 import json
 import re
 import subprocess
+import xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
 
 import pytest
 
-from soc_lab import challenges, terminal
+from soc_lab import challenges, evtx, terminal
 from soc_lab.challenges import ChallengeError, load_challenges, normalise_answer
 from soc_lab.i18n import LANGUAGES, t
 
@@ -59,31 +60,82 @@ EXPECTED = {
 }
 
 
+def _windows_xml():
+    return ET.parse(ROOT / "data/examples/windows_security.xml").getroot()
+
+
+def _evtx_events():
+    records = evtx.read_evtx((ROOT / "data/examples/windows_security.evtx").read_bytes()).records
+    return [ET.fromstring(record) for record in records]
+
+
+def _event_id(event):
+    return event.find(f"{NS}System/{NS}EventID").text
+
+
+def _data(event, name):
+    return next(d.text for d in event.iter(f"{NS}Data") if d.get("Name") == name)
+
+
+def _failures():
+    return [r for r in _csv_rows() if r["event_code"] == "4625"]
+
+
+NS = "{http://schemas.microsoft.com/win/2004/08/events/event}"
+POWERSHELL_EXPECTED = {
+    "ps-01": lambda: str(len(load_challenges().files("powershell"))),
+    "ps-02": lambda: str(len(_csv_rows())),
+    "ps-03": lambda: next(col for col in _csv_rows()[0] if all(r[col].isdigit() and len(r[col]) == 4 for r in _csv_rows())),
+    "ps-04": lambda: str(len(_failures())),
+    "ps-05": lambda: Counter(r["username"] for r in _failures()).most_common(1)[0][0],
+    "ps-06": lambda: "".join({r["failure_reason"] for r in _failures() if r["username"] == "svc_backup"}),
+    "ps-07": lambda: str(len(_windows_xml())),
+    "ps-08": lambda: _data(next(e for e in _windows_xml() if _event_id(e) == "4767"), "SubjectUserName"),
+    "ps-09": lambda: next(r["username"] for r in _csv_rows()
+                          if r["event_code"] == "4740" and not r["source_ip"].startswith("10.")),
+    "ps-10": lambda: str(sum(r["username"] == "e.wilson" and r["timestamp"].startswith("2026-10-12") for r in _failures())),
+    "ps-11": lambda: next(r["timestamp"] for r in _csv_rows()
+                          if r["source_ip"] == "203.0.113.88" and r["event_code"] == "4624"),
+    "ps-12": lambda: str(sum(_event_id(e) == "4625" for e in _evtx_events())),
+    "ps-13": lambda: next(e for e in _evtx_events() if _event_id(e) == "4740").find(
+        f"{NS}System/{NS}TimeCreated").get("SystemTime")[11:19],
+    "ps-14": lambda: next(s["userPrincipalName"] for s in json.loads(
+        (ROOT / "data/examples/entra_signins.json").read_text(encoding="utf-8"))["value"]
+        if s["ipAddress"] == "203.0.113.88" and s["status"]["errorCode"] == 0),
+}
+ALL_EXPECTED = {**EXPECTED, **POWERSHELL_EXPECTED}
+BY_ENVIRONMENT = {"linux": EXPECTED, "powershell": POWERSHELL_EXPECTED}
+
+
 # ---------------------------------------------------------------------------
 # Challenges file
 # ---------------------------------------------------------------------------
-def test_challenges_file_is_complete(challenge_set):
-    items = challenge_set.for_environment("linux")
-    assert [c.id for c in items] == sorted(EXPECTED)
+@pytest.mark.parametrize("environment", challenges.ENVIRONMENTS)
+def test_challenges_file_is_complete(challenge_set, environment):
+    items = challenge_set.for_environment(environment)
+    assert [c.id for c in items] == sorted(BY_ENVIRONMENT[environment])
     assert [c.level for c in items] == sorted(c.level for c in items)  # easiest first
+    assert all(path.is_file() for path in challenge_set.files(environment).values())
+    assert t(f"ui.terminal.env.{environment}") != f"ui.terminal.env.{environment}"
     for challenge in items:
         assert challenges.languages_missing(challenge) == [], challenge.id
         assert challenge.hints and challenge.solution and challenge.files
-        assert all(path.is_file() for path in challenge_set.files("linux").values())
-        assert t(f"ui.terminal.topic.{challenge.topic}")  # every topic has a label
+        assert t(f"ui.terminal.topic.{challenge.topic}") != f"ui.terminal.topic.{challenge.topic}"
 
 
-@pytest.mark.parametrize("challenge_id", sorted(EXPECTED))
+@pytest.mark.parametrize("challenge_id", sorted(ALL_EXPECTED))
 def test_answers_match_the_lab_data(challenge_set, challenge_id):
     """If the logs or the generator change, the answers must be updated: this test says which ones."""
     challenge = challenge_set.get(challenge_id)
-    assert challenge.check(EXPECTED[challenge_id]()), (challenge_id, EXPECTED[challenge_id](), challenge.answers)
+    expected = ALL_EXPECTED[challenge_id]()
+    assert challenge.check(expected), (challenge_id, expected, challenge.answers)
 
 
 def test_solutions_only_use_files_of_the_challenge(challenge_set):
     for challenge in challenge_set.challenges:
         used = set(re.findall(r"logs/[\w.]+", challenge.solution))
-        assert used and used <= set(challenge.files), challenge.id
+        assert used <= set(challenge.files), challenge.id
+        assert used or challenge.topic == "basics", challenge.id  # only a first look at the folder uses no file
 
 
 def test_answer_checking_is_forgiving_about_form_only(challenge_set):
@@ -125,16 +177,33 @@ def test_progress_round_trip(tmp_path):
 # Docker control (no Docker needed)
 # ---------------------------------------------------------------------------
 def test_container_is_local_only_and_locked_down(challenge_set):
-    files = challenge_set.files("linux")
+    files = challenge_set.files()
     args = terminal.run_arguments(files, 7681)
     joined = " ".join(args)
     assert args[0] == "run" and args[-1] == terminal.IMAGE
     assert "--publish 127.0.0.1:7681:7681" in joined  # never on all interfaces
     assert "--rm" in args and "--cap-drop ALL" in joined and "--security-opt no-new-privileges" in joined
-    assert "--memory 256m" in joined and "--pids-limit 256" in joined
+    assert "--memory 512m" in joined and "--pids-limit 256" in joined
     mounts = [arg for arg in args if arg.startswith("type=bind")]
-    assert len(mounts) == len(files) and all(mount.endswith(",readonly") for mount in mounts)
+    assert len(mounts) == len(files) + len(terminal.SUPPORT_FILES)
+    assert all(mount.endswith(",readonly") for mount in mounts)
     assert f"target={terminal.HOME}/logs/linux_auth.log" in joined
+    assert f"target={terminal.HOME}/logs/windows_security.evtx" in joined
+    assert "target=/opt/soc-lab/lib/evtx.py" in joined  # the reader behind Get-WinEvent
+
+
+def test_one_container_serves_every_environment(challenge_set):
+    union = challenge_set.files()
+    for environment in challenges.ENVIRONMENTS:
+        assert challenge_set.files(environment).items() <= union.items()
+    assert terminal.terminal_url(7681) == "http://localhost:7681"
+    assert terminal.terminal_url(7681, "powershell") == "http://localhost:7681/?arg=powershell"
+
+
+def test_lab_shell_accepts_only_known_shells():
+    script = (ROOT / "terminal" / "lab-shell").read_text(encoding="utf-8")
+    assert "powershell) exec pwsh" in script and "*) exec bash --login" in script
+    assert "--url-arg" in (ROOT / "terminal" / "Dockerfile").read_text(encoding="utf-8")
 
 
 def test_docker_status_without_docker(monkeypatch):
@@ -169,8 +238,9 @@ def test_terminal_port_from_environment(monkeypatch):
 
 
 def test_image_files_use_unix_line_endings():
-    for path in (ROOT / "terminal").iterdir():
-        assert b"\r\n" not in path.read_bytes(), path.name  # bash inside the container rejects CRLF scripts
+    for path in (ROOT / "terminal").rglob("*"):
+        if path.is_file():
+            assert b"\r\n" not in path.read_bytes(), path.name  # bash inside the container rejects CRLF scripts
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +265,7 @@ def test_terminal_tab_without_docker(app, lang, tmp_path):
     assert any(w.value == t("ui.terminal.no_docker", lang) for w in app.warning)
     assert any("wsl --install" in m.value for m in app.markdown)
 
-    app.selectbox(key="terminal_challenge").set_value("linux-01").run()
+    app.selectbox(key="terminal_challenge_linux").set_value("linux-01").run()
     app.text_input(key="terminal_answer_linux-01").set_value("45")
     next(b for b in app.button if b.label == t("ui.terminal.check", lang)).click().run()
     assert any(s.value.startswith(t("ui.terminal.correct", lang)[:8]) for s in app.success)
@@ -206,14 +276,26 @@ def test_terminal_tab_without_docker(app, lang, tmp_path):
 
 def test_wrong_answer_and_reveal(app):
     app.run()
-    app.selectbox(key="terminal_challenge").set_value("linux-04").run()
+    app.selectbox(key="terminal_challenge_linux").set_value("linux-04").run()
     app.text_input(key="terminal_answer_linux-04").set_value("10.10.2.5")
     next(b for b in app.button if b.label == "Check").click().run()
     assert any(e.value == t("ui.terminal.wrong") for e in app.error)
     assert not [c for c in app.code if c.language == "bash"]  # (other tabs show YAML / SPL code)
     app.button(key="terminal_reveal_linux-04").click().run()
     assert any("uniq -c" in c.value for c in app.code)
-    assert app.session_state["terminal_progress"]["solved"] == set()
+    assert app.session_state["terminal_progress_linux"]["solved"] == set()
+
+
+def test_powershell_challenges_in_the_tab(app, tmp_path):
+    app.run()
+    app.segmented_control(key="terminal_env").set_value("powershell").run()
+    assert not app.exception
+    app.selectbox(key="terminal_challenge_powershell").set_value("ps-04").run()
+    app.text_input(key="terminal_answer_ps-04").set_value("165")
+    next(b for b in app.button if b.label == "Check").click().run()
+    assert any(c.language == "powershell" and "Where-Object" in c.value for c in app.code)
+    assert challenges.load_progress(challenges.progress_path(tmp_path, "powershell"))["solved"] == {"ps-04"}
+    assert challenges.load_progress(challenges.progress_path(tmp_path, "linux"))["solved"] == set()  # kept apart
 
 
 # ---------------------------------------------------------------------------
@@ -224,17 +306,45 @@ def running_terminal(challenge_set):
     if not terminal.docker_status().ready:
         pytest.skip("Docker engine not available")
     was_running = terminal.container_running()
-    terminal.start(challenge_set.files("linux"))
+    terminal.start(challenge_set.files())
     yield
     if not was_running:
         terminal.stop()
 
 
-def test_every_solution_prints_the_answer_in_real_linux(running_terminal, challenge_set):
-    for challenge in challenge_set.for_environment("linux"):
-        result = terminal.run_in_container(challenge.solution)
+@pytest.mark.parametrize("environment", challenges.ENVIRONMENTS)
+def test_every_solution_prints_the_answer_in_the_real_shell(running_terminal, challenge_set, environment):
+    for challenge in challenge_set.for_environment(environment):
+        result = terminal.run_in_container(challenge.solution, environment)
         assert result.returncode == 0, (challenge.id, result.stderr)
         assert challenge.check(result.stdout), (challenge.id, result.stdout, challenge.answers)
+
+
+def _pwsh(command):
+    result = terminal.run_in_container(command, "powershell")
+    assert result.returncode == 0, (command, result.stderr)
+    return result.stdout.strip()
+
+
+def test_lab_get_winevent_behaves_like_windows(running_terminal):
+    """The lab version reads the .evtx with the dashboard's reader and returns events newest first."""
+    path = "$HOME/logs/windows_security.evtx"
+    records = _evtx_events()
+    assert _pwsh(f"(Get-WinEvent -Path {path}).Count") == str(len(records))
+    newest = records[-1].find(f"{NS}System/{NS}EventRecordID").text
+    oldest = records[0].find(f"{NS}System/{NS}EventRecordID").text
+    assert _pwsh(f"(Get-WinEvent -Path {path} -MaxEvents 1).RecordId") == newest
+    assert _pwsh(f"(Get-WinEvent -Path {path} -Oldest -MaxEvents 1).RecordId") == oldest
+    assert _pwsh(f"(Get-WinEvent -FilterHashtable @{{Path=\"{path}\"; TargetUserName='adminstrator'}}).Id") == "4625"
+    assert _pwsh(f"(Get-WinEvent -FilterHashtable @{{Path=\"{path}\"; Id=4624,4625}}).Count") == str(
+        sum(_event_id(e) in ("4624", "4625") for e in records))
+    assert _pwsh(f"([xml](Get-WinEvent -FilterHashtable @{{Path=\"{path}\"; Id=4767}}).ToXml()).Event.System.EventID") == "4767"
+    assert "failed to log on" in _pwsh(f"(Get-WinEvent -Path {path} -MaxEvents 3 | Where-Object Id -eq 4625).Message")
+    for command in ("Get-WinEvent -LogName Security", "Get-WinEvent -Path logs/windows_security.xml"):
+        result = terminal.run_in_container(command, "powershell")
+        assert result.returncode != 0 and ".evtx" in result.stderr, command
+    result = terminal.run_in_container(f"Get-WinEvent -FilterHashtable @{{Path=\"{path}\"; Id=9999}}", "powershell")
+    assert "No events were found" in result.stderr
 
 
 def test_container_is_unprivileged_and_logs_are_read_only(running_terminal):

@@ -283,11 +283,12 @@ def _cmd_terminal(args: argparse.Namespace) -> int:
     if args.action == "start":
         print("Starting the terminal (the first start builds the image and can take a few minutes)...")
         try:
-            terminal.start(load_challenges().files("linux"))
+            terminal.start(load_challenges().files())
         except terminal.TerminalError as exc:
             print(f"Error: {exc}", file=sys.stderr)
             return 1
         print(f"Terminal running at {url} (this computer only). Logs are in ~/logs, read-only.")
+        print(f"PowerShell: {terminal.terminal_url(environment='powershell')}")
     elif args.action == "stop":
         terminal.stop()
         print("Terminal stopped.")

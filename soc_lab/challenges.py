@@ -1,7 +1,7 @@
 """Terminal challenges: load, check answers and keep progress.
 
 The challenges live in data/terminal/challenges.json, a plain JSON file shared by every phase of
-the Terminal tab (the Docker terminal now, PowerShell and the in-browser terminal later), so the
+the Terminal tab (bash and PowerShell in Docker now, the in-browser terminal later), so the
 same questions, hints and answers work everywhere. Texts are in the file itself, in every
 supported language, so a JavaScript terminal can read it without the Python translation files.
 """
@@ -18,7 +18,7 @@ from .config import PROJECT_ROOT
 from .i18n import DEFAULT_LANGUAGE, LANGUAGES
 
 CHALLENGES_PATH = PROJECT_ROOT / "data" / "terminal" / "challenges.json"
-ENVIRONMENTS = ("linux",)  # phase 2 adds "powershell", phase 3 "cmd"
+ENVIRONMENTS = ("linux", "powershell")  # phase 3 adds "cmd"
 TEXT_FIELDS = ("title", "question", "explanation")
 
 
@@ -60,9 +60,12 @@ class ChallengeSet:
     def for_environment(self, environment: str) -> list[Challenge]:
         return [c for c in self.challenges if environment in c.environments]
 
-    def files(self, environment: str, root: Path = PROJECT_ROOT) -> dict[str, Path]:
-        """Terminal path (relative to the home directory) -> lab file on disk."""
-        return {path: root / source for path, source in self.environments[environment]["files"].items()}
+    def files(self, environment: str | None = None, root: Path = PROJECT_ROOT) -> dict[str, Path]:
+        """Terminal path (relative to the home directory) -> lab file on disk.
+
+        Without an environment: the files of every environment, since one container serves both shells."""
+        names = [environment] if environment else list(self.environments)
+        return {path: root / source for name in names for path, source in self.environments[name]["files"].items()}
 
     def get(self, challenge_id: str) -> Challenge:
         return next(c for c in self.challenges if c.id == challenge_id)

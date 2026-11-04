@@ -1,7 +1,10 @@
-"""Terminal tab, phase 1: a real Linux shell in a local Docker container, shown in the browser by ttyd.
+"""Terminal tab: a real Linux shell (phase 1) and PowerShell 7 (phase 2) in a local Docker container,
+shown in the browser by ttyd.
 
 The dashboard builds the image from terminal/Dockerfile, starts one container and embeds
-http://localhost:<port>. Everything goes through the `docker` command line, so no extra Python
+http://localhost:<port>; the address picks the shell (`?arg=powershell` for PowerShell, see
+terminal/lab-shell). Windows Home cannot run Windows containers, so PowerShell runs on Linux too:
+its Get-WinEvent is a lab version that reads .evtx files (terminal/SocLab). Everything goes through the `docker` command line, so no extra Python
 package is needed. The container is locked down for a practice box on a personal computer:
 
 - the port is published on 127.0.0.1 only, so other machines on the network cannot reach the shell;
@@ -31,6 +34,8 @@ CONTAINER = "mini-soc-lab-terminal"
 DOCKER_DIR = PROJECT_ROOT / "terminal"
 HOME = "/home/analyst"
 DEFAULT_PORT = 7681
+# Lab code the container needs at run time, mounted read-only: the .evtx reader behind Get-WinEvent.
+SUPPORT_FILES = {"/opt/soc-lab/lib/evtx.py": PROJECT_ROOT / "soc_lab" / "evtx.py"}
 HASH_LABEL = "mini-soc-lab.build-hash"
 IS_BROWSER = sys.platform == "emscripten"  # stlite / Pyodide: no subprocesses, no Docker
 
@@ -56,8 +61,10 @@ def terminal_port() -> int:
         return DEFAULT_PORT
 
 
-def terminal_url(port: int | None = None) -> str:
-    return f"http://localhost:{port or terminal_port()}"
+def terminal_url(port: int | None = None, environment: str = "linux") -> str:
+    """Address of the shell for an environment: bash by default, PowerShell with ?arg=powershell."""
+    url = f"http://localhost:{port or terminal_port()}"
+    return f"{url}/?arg=powershell" if environment == "powershell" else url
 
 
 def _docker(*args: str, timeout: float = 30) -> subprocess.CompletedProcess:
@@ -116,10 +123,11 @@ def run_arguments(files: dict[str, Path], port: int) -> list[str]:
     args = ["run", "--detach", "--rm", "--name", CONTAINER,
             "--publish", f"127.0.0.1:{port}:7681",
             "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
-            "--memory", "256m", "--cpus", "1", "--pids-limit", "256",
+            "--memory", "512m", "--cpus", "1", "--pids-limit", "256",
             "--hostname", "soc-lab"]
-    for target, source in sorted(files.items()):
-        args += ["--mount", f"type=bind,source={Path(source).resolve()},target={HOME}/{target},readonly"]
+    mounts = {f"{HOME}/{target}": source for target, source in files.items()} | SUPPORT_FILES
+    for target, source in sorted(mounts.items()):
+        args += ["--mount", f"type=bind,source={Path(source).resolve()},target={target},readonly"]
     return [*args, IMAGE]
 
 
@@ -130,7 +138,7 @@ def container_running() -> bool:
 
 def start(files: dict[str, Path], port: int | None = None) -> None:
     """Build the image if it is missing or out of date, then start the container (if not already running)."""
-    missing = [str(path) for path in files.values() if not Path(path).is_file()]
+    missing = [str(path) for path in [*files.values(), *SUPPORT_FILES.values()] if not Path(path).is_file()]
     if missing:
         raise TerminalError(f"missing log file(s): {', '.join(missing)}")
     if container_running():
@@ -144,14 +152,18 @@ def start(files: dict[str, Path], port: int | None = None) -> None:
 
 
 def stop() -> None:
-    result = _docker("stop", "--time", "2", CONTAINER, timeout=30)
+    result = _docker("stop", "-t", "2", CONTAINER, timeout=30)
     if result.returncode != 0 and container_running():
         raise TerminalError(_tail(result))
 
 
-def run_in_container(command: str, timeout: float = 20) -> subprocess.CompletedProcess:
-    """Run a shell command as the analyst, from the home directory (used by the tests)."""
-    return _docker("exec", "--workdir", HOME, CONTAINER, "bash", "-c", command, timeout=timeout)
+def run_in_container(command: str, environment: str = "linux", timeout: float = 30) -> subprocess.CompletedProcess:
+    """Run a command as the analyst, from the home directory, in bash or PowerShell (used by the tests)."""
+    if environment == "powershell":
+        shell = ["pwsh", "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command]
+    else:
+        shell = ["bash", "-c", command]
+    return _docker("exec", "--workdir", HOME, CONTAINER, *shell, timeout=timeout)
 
 
 def _tail(result: subprocess.CompletedProcess, lines: int = 6) -> str:

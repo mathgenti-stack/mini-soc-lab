@@ -1,0 +1,9 @@
+#!/bin/sh
+# Started by ttyd for each browser tab. The page address chooses the shell:
+#   http://localhost:7681/?arg=powershell  -> PowerShell 7
+#   http://localhost:7681/                 -> bash
+# Only these two are accepted; any other value opens bash.
+case "$1" in
+  powershell) exec pwsh -NoLogo ;;
+  *) exec bash --login ;;
+esac
