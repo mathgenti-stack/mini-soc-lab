@@ -177,7 +177,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let S={done:{},known:{},notes:[]};
 try{S=Object.assign(S,JSON.parse(localStorage.getItem("soclab-curso")||"{}"))}catch(e){}
-function save(){try{localStorage.setItem("soclab-curso",JSON.stringify(S))}catch(e){}}
+function save(){try{localStorage.setItem("soclab-curso",JSON.stringify(S))}catch(e){}if(window.soclabChanged)window.soclabChanged()}
 const TOT=P.reduce((a,p)=>a+p[1].length,0);
 function prog(){let n=0,T=0;TOP.forEach(t=>t.chk.forEach((_,j)=>{T++;if(S.tdone[t.id+"-"+j])n++}));const p=T?Math.round(100*n/T):0;$("bar").style.width=p+"%";$("pct").textContent=n+" de "+T+" itens do checklist ("+p+"%)";$("s1").textContent=p+"%"}
 function rC(){let h='<p class="mu">Este é o roteiro geral por semanas. O estudo de cada assunto (explicação, checklist e quiz) fica na aba Tópicos.</p>';P.forEach((p,i)=>{const d=p[1].filter((_,j)=>S.done[i+"-"+j]).length;h+=`<h2>${esc(p[0])} <span class="ph">${d}/${p[1].length}</span></h2>`;p[1].forEach((t,j)=>{const k=i+"-"+j,on=S.done[k];h+=`<label class="it ${on?"d":""} ${t[0]=="★"?"ck":""}"><input type="checkbox" data-k="${k}" ${on?"checked":""}><span>${esc(t)}</span></label>`})});$("v0").innerHTML=h;
@@ -1230,6 +1230,8 @@ envs.forEach(e=>{const g=st.get("/mnt/soclab/terminal_"+e+".json");g.onsuccess=(
 async function loadLab(){try{const r=await fetch("data/terminal/challenges.json",{cache:"no-cache"}),d=await r.json(),L={};
 d.challenges.forEach(c=>(c.roadmap||[]).forEach(tp=>(L[tp]=L[tp]||[]).push([c.id,c.environments[0],c.title["pt-BR"]||c.title.en,c.level])));LAB=L}catch(x){}
 LABDONE=await readLabProgress();
+/* com login: desafios resolvidos em outro computador (vêm da nuvem, conta.js) */
+const CL=window.soclabCloudLab?window.soclabCloudLab():{};Object.keys(CL).forEach(n=>{if(/^terminal_/.test(n))try{(JSON.parse(CL[n]).solved||[]).forEach(id=>LABDONE[id]=true)}catch(x){}});
 TOP.forEach(t=>{if(!LAB[t.id])return;let k=t.chk.indexOf(LABTXT);if(k<0){t.chk.push(LABTXT);k=t.chk.length-1}
 const [d,n]=labCount(t);if(n&&d==n&&!S.tdone[t.id+"-"+k]){S.tdone[t.id+"-"+k]=true;save()}})}
 function refreshViews(){prog();const on=[...document.querySelectorAll("main>div")].find(x=>!x.classList.contains("hide"));if(!on)return;if(on.id=="v4")rT();if(on.id=="v7")rHj()}
@@ -1733,4 +1735,12 @@ function openHash(){const t=TOP.find(x=>x.id==decodeURIComponent(location.hash.s
 rC();rT();$("s2").textContent=MQ.length;$("s3").textContent=TOP.length;if(!openHash())goTab(7);window.addEventListener("hashchange",openHash);
 /* de volta do lab (outra aba): relê o progresso */
 loadLab().then(refreshViews);window.addEventListener("focus",()=>loadLab().then(refreshViews));
+/* o progresso deste navegador mudou (veio da nuvem, ou a conta saiu): relê e redesenha */
+window.soclabReload=()=>{let o={};try{o=JSON.parse(localStorage.getItem("soclab-curso")||"{}")||{}}catch(e){}Object.keys(S).forEach(k=>delete S[k]);Object.assign(S,{done:{},known:{},notes:[]},o);S.miss=S.miss||{};S.hist=S.hist||[];S.tdone=S.tdone||{};S.apps=S.apps||[];rC();loadLab().then(refreshViews)};
+</script>
+<script type="module">
+/* conta: login por e-mail e progresso na nuvem (opcional) */
+import {mountCourse,cloudLabFiles,courseChanged} from "./conta.js";
+window.soclabChanged=courseChanged;window.soclabCloudLab=cloudLabFiles;
+mountCourse(document.querySelector("#hero .hr"),()=>window.soclabReload());
 </script></body></html>

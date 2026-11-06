@@ -12,6 +12,11 @@
       // Static build for Cloudflare Pages: runs streamlit_app.py in the browser via stlite (Pyodide).
       // Keep this list in sync with the Python/data files the app needs at runtime.
       import { mount } from "https://cdn.jsdelivr.net/npm/@stlite/browser@1.9.2/build/stlite.js";
+      // Optional e-mail login (conta.js): with a session, the cloud progress is written to /mnt/soclab
+      // before the lab starts, and changes are sent back while it runs. Without one nothing changes.
+      // Loaded with a dynamic import so the lab still opens if it fails.
+      let conta = null;
+      try { conta = await import("./conta.js"); } catch (e) { console.warn("conta.js:", e); }
 
       const paths = [
         "streamlit_app.py",
@@ -65,6 +70,7 @@
         "soc_lab/detection/rules.py",
       ];
 
+      const user = conta ? await conta.pullLabBeforeMount() : null;
       mount(
         {
           requirements: ["pandas"],
@@ -77,6 +83,10 @@
         },
         document.getElementById("root"),
       );
+      if (conta) {
+        conta.mountLab(user);
+        if (user) conta.watchLab();
+      }
     </script>
   </body>
 </html>

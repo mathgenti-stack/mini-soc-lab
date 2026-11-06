@@ -127,7 +127,20 @@ The course's explanations live next to the lab on the website, in `estudar.html`
 
 - **From a challenge to the explanation.** Under the hints, each challenge shows *Stuck on the idea?*, with links to the topics that explain it (for example `linux-03` → Linux basics and Operating system security). The page opens directly on that topic (`estudar.html#linux`).
 - **From a topic to the challenges.** Each topic with exercises has a *Praticar* (practise) tab listing them, read from `challenges.json`. Each one opens the lab directly on that challenge with `?challenge=<id>`: the Terminal tab, the right shell and the challenge chosen. The link is read once and then removed from the address.
-- **Progress.** On the website, the lab saves its progress in the browser: `index.html` keeps `/mnt` in IndexedDB (`idbfsMountpoints`) and points `SOC_LAB_ANSWERS_DIR` at `/mnt/soclab`, so solved challenges survive a reload. `estudar.html` reads those files (read-only), shows ✅ next to solved challenges and ticks the topic's "Praticar no SOC Lab" checklist item when all are solved. The study page keeps its own progress in `localStorage`. Both stay in that browser: there are no accounts yet.
+- **Progress.** On the website, the lab saves its progress in the browser: `index.html` keeps `/mnt` in IndexedDB (`idbfsMountpoints`) and points `SOC_LAB_ANSWERS_DIR` at `/mnt/soclab`, so solved challenges survive a reload. `estudar.html` reads those files (read-only), shows ✅ next to solved challenges and ticks the topic's "Praticar no SOC Lab" checklist item when all are solved. The study page keeps its own progress in `localStorage`. Without an account, both stay in that browser.
+
+#### Optional account: progress in the cloud (`conta.js`)
+
+People can sign in with their e-mail to keep their progress in the cloud and continue on another computer. There is no password: [Supabase](https://supabase.com) Auth sends a 6-digit code (`signInWithOtp` + `verifyOtp`). Everything still works without signing in.
+
+- **What is stored.** One row per person in `public.progress`: `course` (the study page's `localStorage` state) and `lab` (the files under `/mnt/soclab`, as text). Row level security lets each person read and change only their own row. The schema is recorded in `supabase/migrations/`.
+- **When it syncs.** The study page merges with the cloud when it opens, when you come back to its tab, and a moment after each change. The lab writes the cloud copy into `/mnt/soclab` *before* it starts (the lab reads the folder once, at start-up), then sends changes every 15 seconds and when its tab is hidden. If the server does not answer within 5 seconds, the lab opens with what is in the browser.
+- **How conflicts are solved.** Solved and revealed challenges are merged (solved anywhere counts as solved). Training answers keep the newest version (`updated`). For the study page, the first sign-in on a browser merges both copies; after that, the browser's copy wins if it has unsent changes, otherwise the cloud's.
+- **Sign out** keeps the progress in the cloud and empties this browser (shared computers). **Apagar minha conta** (delete my account) calls `delete_my_account()`, which deletes the user; the progress row goes with it.
+- **Privacy.** `privacidade.html` explains what is stored, where (Supabase, United States) and how to delete it.
+- **Keys.** The site contains only the project's public (*publishable*) key. It gives access to nothing beyond what the row level security policies allow. The secret key is never used in the site.
+
+E-mail delivery needs two settings in the Supabase dashboard: the *Magic link* e-mail template must contain `{{ .Token }}` (so the e-mail carries the code), and a custom SMTP server, because the built-in one only sends to the project's team, a few times per hour.
 
 To try both together on your computer, serve the folder as a static site: `python -m http.server 8000`, then open http://localhost:8000/ (the lab) and http://localhost:8000/estudar.html. The Streamlit dashboard (`streamlit run`) links to the study pages on the website instead.
 
