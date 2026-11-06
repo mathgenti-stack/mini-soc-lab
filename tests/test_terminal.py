@@ -164,6 +164,9 @@ def test_answer_checking_is_forgiving_about_form_only(challenge_set):
     (lambda d: d["challenges"][0].update(environments=["zsh"]), "environment"),
     (lambda d: d["challenges"][0].pop("solution"), "solution"),
     (lambda d: d["challenges"][0]["title"].pop("en"), "en"),
+    (lambda d: d["challenges"][0].update(roadmap=["nosuchtopic"]), "roadmap"),
+    (lambda d: d["roadmap"]["topics"].update({"Bad Id": {"en": "x"}}), "roadmap"),
+    (lambda d: d["roadmap"].update(url="http://example.com"), "https"),
 ])
 def test_invalid_challenge_files_are_refused(tmp_path, change, message):
     document = json.loads(challenges.CHALLENGES_PATH.read_text(encoding="utf-8"))
@@ -172,6 +175,20 @@ def test_invalid_challenge_files_are_refused(tmp_path, change, message):
     path.write_text(json.dumps(document), encoding="utf-8")
     with pytest.raises(ChallengeError, match=message):
         load_challenges(path)
+
+
+def test_every_challenge_points_to_the_roadmap(challenge_set):
+    """Each challenge links to at least one roadmap topic, and every topic the file names is used."""
+    used = set()
+    for challenge in challenge_set.challenges:
+        assert challenge.roadmap, challenge.id
+        used.update(challenge.roadmap)
+        for name, url in challenge_set.roadmap_links(challenge, "pt-BR"):
+            assert name and url.startswith("https://claude.ai/artifact/") and url.count("#") == 1
+    assert used == set(challenge_set.roadmap["topics"])
+    links = challenge_set.roadmap_links(challenge_set.get("linux-03"), "pt-BR")
+    assert [name for name, _ in links] == ["Linux Básico", "Segurança do SO (SSH, senhas)"]
+    assert links[0][1].endswith("#linux")
 
 
 def test_progress_round_trip(tmp_path):
@@ -295,6 +312,44 @@ def test_wrong_answer_and_reveal(app):
     app.button(key="terminal_reveal_linux-04").click().run()
     assert any("uniq -c" in c.value for c in app.code)
     assert app.session_state["terminal_progress_linux"]["solved"] == set()
+
+
+def test_roadmap_link_under_the_hints(app):
+    app.run()
+    app.selectbox(key="terminal_challenge_linux").set_value("linux-03").run()
+    shown = [m.value for m in app.markdown if "claude.ai/artifact/" in m.value]
+    assert len(shown) == 1 and "#linux)" in shown[0] and "#segso)" in shown[0]
+
+
+@pytest.mark.parametrize("challenge_id, environment", [("ps-08", "powershell"), ("cmd-03", "cmd"), ("linux-12", "linux")])
+def test_link_opens_one_challenge(tmp_path, monkeypatch, challenge_id, environment):
+    """?challenge=<id> (used by the study roadmap) opens the Terminal tab on that shell and challenge."""
+    testing = pytest.importorskip("streamlit.testing.v1")
+    monkeypatch.setenv("SOC_LAB_ANSWERS_DIR", str(tmp_path))
+    monkeypatch.setattr(terminal.shutil, "which", lambda name: None)
+    app = testing.AppTest.from_file(str(APP_PATH), default_timeout=120)
+    app.query_params["challenge"] = challenge_id
+    app.query_params["lang"] = "pt-BR"
+    app.run()
+    assert not app.exception
+    assert app.session_state["active_tab"] == "terminal"
+    assert app.segmented_control(key="terminal_env").value == environment
+    assert app.selectbox(key=f"terminal_challenge_{environment}").value == challenge_id
+    assert "challenge" not in app.query_params  # read once: later clicks are not undone by the link
+    app.segmented_control(key="terminal_env").set_value("linux").run()
+    assert app.segmented_control(key="terminal_env").value == "linux"
+
+
+def test_link_with_an_unknown_challenge_still_opens_the_tab(tmp_path, monkeypatch):
+    testing = pytest.importorskip("streamlit.testing.v1")
+    monkeypatch.setenv("SOC_LAB_ANSWERS_DIR", str(tmp_path))
+    monkeypatch.setattr(terminal.shutil, "which", lambda name: None)
+    app = testing.AppTest.from_file(str(APP_PATH), default_timeout=120)
+    app.query_params["challenge"] = "nope-99"
+    app.run()
+    assert not app.exception
+    assert app.session_state["active_tab"] == "terminal"
+    assert app.segmented_control(key="terminal_env").value == "linux"
 
 
 def screen_text(app, environment):

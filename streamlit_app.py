@@ -306,6 +306,13 @@ token = training.dataset_token(source_name)
 # tab widget gets one key per language; a language switch reopens the same tab under its new name.
 tab_labels = [T(f"ui.tab.{tab}") for tab in TAB_IDS]
 tab_key = f"main_tabs_{lang}"
+# A link can open one terminal challenge (?challenge=linux-03): the study roadmap uses this. It is read once,
+# then removed from the address, so changing tab or challenge afterwards is not undone by the link.
+if st.query_params.get("challenge"):
+    st.session_state["active_tab"] = "terminal"
+    st.session_state["terminal_open"] = st.query_params["challenge"]
+    st.session_state.pop(tab_key, None)  # the tab widget then opens on its default, the active tab
+    del st.query_params["challenge"]
 active_tab = st.session_state.get("active_tab", TAB_IDS[0])
 (tab_overview, tab_alerts, tab_cases, tab_events, tab_investigate, tab_quality, tab_export, tab_terminal,
  tab_about) = st.tabs(
@@ -994,6 +1001,11 @@ def render_challenges(challenge_set, environment: str) -> None:
         with st.expander(T("ui.terminal.hint", number=number + 1), icon=":material/lightbulb:"):
             st.markdown(challenge.hint(number, lang))
 
+    # Stuck on the idea rather than the command? The study roadmap explains it; the lab does not repeat it.
+    links = challenge_set.roadmap_links(challenge, lang)
+    if links:
+        st.markdown(T("ui.terminal.roadmap", links=" · ".join(f"[{name}]({url})" for name, url in links)))
+
     if challenge.id in solved or challenge.id in revealed:
         if challenge.id not in solved:
             st.caption(T("ui.terminal.revealed_note"))
@@ -1015,9 +1027,15 @@ with tab_terminal:
     except challenges.ChallengeError as exc:
         st.error(T("ui.terminal.load_error", detail=str(exc)))
     else:
+        opened = terminal_set.find(st.session_state.pop("terminal_open", ""))
+        if opened:  # set before the widgets below are drawn, so they open on this challenge
+            st.session_state["terminal_open_env"] = opened.environments[0]
+            st.session_state.pop("terminal_env", None)  # the shell selector then starts on its default
+            st.session_state[f"terminal_challenge_{opened.environments[0]}"] = opened.id
         terminal_env = st.segmented_control(T("ui.terminal.shell"), list(challenges.ENVIRONMENTS),
                                             format_func=lambda env: T(f"ui.terminal.env.{env}"),
-                                            default=challenges.ENVIRONMENTS[0], required=True, key="terminal_env")
+                                            default=st.session_state.get("terminal_open_env", challenges.ENVIRONMENTS[0]),
+                                            required=True, key="terminal_env")
         # The real terminal needs Docker on this computer: not in the browser build, and there is no real CMD.
         can_use_docker = not terminal.IS_BROWSER and terminal_env in terminal.DOCKER_ENVIRONMENTS
         col_tasks, col_shell = st.columns([2, 3], gap="large")

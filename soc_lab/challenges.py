@@ -4,6 +4,9 @@ The challenges live in data/terminal/challenges.json, a plain JSON file shared b
 the Terminal tab (bash and PowerShell in Docker, and the simulated bash, PowerShell and CMD), so the
 same questions, hints and answers work everywhere. Texts are in the file itself, in every
 supported language, so a JavaScript terminal can read it without the Python translation files.
+
+Each challenge also names the topics of the study roadmap (a separate page) that explain it, so a
+learner who gets stuck can open the right lesson: the link is the roadmap's url followed by #topic.
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ from .i18n import DEFAULT_LANGUAGE, LANGUAGES
 CHALLENGES_PATH = PROJECT_ROOT / "data" / "terminal" / "challenges.json"
 ENVIRONMENTS = ("linux", "powershell", "cmd")
 TEXT_FIELDS = ("title", "question", "explanation")
+ROADMAP_TOPIC_ID = re.compile(r"^[a-z0-9-]+$")  # a plain #name: the only fragment the roadmap page receives
 
 
 class ChallengeError(ValueError):
@@ -39,6 +43,7 @@ class Challenge:
     answers: tuple[str, ...]
     solution: str
     explanation: dict
+    roadmap: tuple[str, ...] = ()  # roadmap topic ids that explain this challenge
 
     def text(self, field: str, lang: str = DEFAULT_LANGUAGE) -> str:
         values = getattr(self, field)
@@ -56,6 +61,7 @@ class Challenge:
 class ChallengeSet:
     environments: dict  # name -> {"home": ..., "files": {path in terminal: lab file}}
     challenges: tuple[Challenge, ...]
+    roadmap: dict | None = None  # {"url": ..., "topics": {id: {lang: name}}}
 
     def for_environment(self, environment: str) -> list[Challenge]:
         return [c for c in self.challenges if environment in c.environments]
@@ -69,6 +75,17 @@ class ChallengeSet:
 
     def get(self, challenge_id: str) -> Challenge:
         return next(c for c in self.challenges if c.id == challenge_id)
+
+    def find(self, challenge_id: str) -> Challenge | None:
+        return next((c for c in self.challenges if c.id == challenge_id), None)
+
+    def roadmap_links(self, challenge: Challenge, lang: str = DEFAULT_LANGUAGE) -> list[tuple[str, str]]:
+        """(topic name, link) for each roadmap topic that explains the challenge."""
+        if not self.roadmap:
+            return []
+        topics = self.roadmap["topics"]
+        return [(topics[topic].get(lang) or topics[topic][DEFAULT_LANGUAGE], f"{self.roadmap['url']}#{topic}")
+                for topic in challenge.roadmap]
 
 
 def normalise_answer(text: str) -> str:
@@ -91,10 +108,10 @@ def load_challenges(path: Path = CHALLENGES_PATH) -> ChallengeSet:
                 id=raw["id"], environments=tuple(raw["environments"]), level=int(raw["level"]),
                 topic=raw["topic"], files=tuple(raw.get("files", [])), title=raw["title"],
                 question=raw["question"], hints=tuple(raw.get("hints", [])), answers=tuple(raw["answers"]),
-                solution=raw["solution"], explanation=raw["explanation"]))
+                solution=raw["solution"], explanation=raw["explanation"], roadmap=tuple(raw.get("roadmap", []))))
         except (KeyError, TypeError, ValueError) as exc:
             raise ChallengeError(f"challenge {raw.get('id', '?')}: missing or invalid field ({exc})") from exc
-    result = ChallengeSet(environments, tuple(challenges))
+    result = ChallengeSet(environments, tuple(challenges), document.get("roadmap"))
     _validate(result)
     return result
 
@@ -103,7 +120,17 @@ def _validate(challenge_set: ChallengeSet) -> None:
     ids = [c.id for c in challenge_set.challenges]
     if len(ids) != len(set(ids)):
         raise ChallengeError("challenge ids must be unique")
+    roadmap = challenge_set.roadmap or {}
+    topics = roadmap.get("topics", {})
+    if roadmap and not str(roadmap.get("url", "")).startswith("https://"):
+        raise ChallengeError("roadmap: 'url' must be an https:// address")
+    for topic, names in topics.items():
+        if not ROADMAP_TOPIC_ID.match(topic) or DEFAULT_LANGUAGE not in names:
+            raise ChallengeError(f"roadmap topic '{topic}': needs a plain lowercase id and a {DEFAULT_LANGUAGE} name")
     for challenge in challenge_set.challenges:
+        unknown_topics = set(challenge.roadmap) - set(topics)
+        if unknown_topics:
+            raise ChallengeError(f"{challenge.id}: unknown roadmap topics {sorted(unknown_topics)}")
         if not challenge.answers or not all(normalise_answer(a) for a in challenge.answers):
             raise ChallengeError(f"{challenge.id}: needs at least one non-empty answer")
         for field in TEXT_FIELDS:

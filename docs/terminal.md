@@ -121,6 +121,15 @@ There are 36 challenges: 14 for Linux, 14 for PowerShell and 8 for CMD.
 
 **CMD**, in four levels: counting with `find /c` (and the `find /c /v ""` trick that counts lines), case with `/i`, several words at once with `findstr`, CSV values with their commas, chains of `find` as an AND, a user's events in the Windows XML, and cutting a line into words with `for /f`.
 
+### Linked to the study roadmap
+
+The challenges are tied to the author's study roadmap (a separate page on claude.ai, in Portuguese), so studying and practising point to each other:
+
+- **From the lab to the roadmap.** Under the hints, each challenge shows *Stuck on the idea? Review it in the study roadmap*, with links to the topics that explain it (for example `linux-03` → Linux basics and Operating system security). The lab does not repeat the theory; the roadmap opens directly on that topic (`<roadmap url>#linux`).
+- **From the roadmap to the lab.** Each roadmap topic with exercises has a *Praticar* (practise) tab listing them, and its checklist has an item to solve them. Each one opens the lab directly on that challenge with `?challenge=<id>`: the Terminal tab, the right shell and the challenge chosen. The link is read once and then removed from the address.
+
+The topics live in `challenges.json` (`roadmap.topics`, and `roadmap` in each challenge). The roadmap's list of exercises is generated from the same file, so after adding a challenge, update both.
+
 Progress is saved per shell, in `training_answers/terminal_<shell>.json` (`linux`, `powershell`, `cmd`). A challenge counts as solved only when answered. Showing the solution marks it 👁️ but does not count it as solved.
 
 ### Format of `challenges.json`
@@ -131,6 +140,7 @@ Progress is saved per shell, in `training_answers/terminal_<shell>.json` (`linux
   "challenges": [{
     "id": "linux-03", "environments": ["linux"], "level": 2, "topic": "grep",
     "files": ["logs/linux_auth.log"],
+    "roadmap": ["linux", "segso"],
     "title": {"en": "...", "pt-BR": "..."}, "question": {"en": "...", "pt-BR": "..."},
     "hints": [{"en": "...", "pt-BR": "..."}],
     "answers": ["19"],
@@ -143,4 +153,5 @@ Progress is saved per shell, in `training_answers/terminal_<shell>.json` (`linux
 - Texts are inside the file, in every language, so any terminal can use it without the Python translation files.
 - `answers` lists every accepted answer. Case, accents, surrounding quotes and extra spaces are ignored.
 - `solution` must print exactly the answer. `tests/test_terminal.py` checks every answer against the lab data in Python; the simulator tests run every solution in the simulated shell; with Docker running, the bash and PowerShell solutions also run in the real container. If the logs or the generator change, these tests say which answers to update.
+- `roadmap` lists the study roadmap topics that explain the challenge. They must be declared in the top-level `roadmap.topics` (a plain lowercase id and a name per language), and `roadmap.url` must be `https://`.
 - Environments: `linux`, `powershell` and `cmd`. One container serves bash and PowerShell, so it mounts the files of every environment.

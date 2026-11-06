@@ -679,6 +679,7 @@
   "ui.terminal.correct": "Correto! A solução e a explicação estão logo abaixo.",
   "ui.terminal.wrong": "Ainda não. Olhe de novo a saída do comando ou abra uma dica.",
   "ui.terminal.hint": "Dica {number}",
+  "ui.terminal.roadmap": "📖 **Travou na ideia?** Revise a explicação no roadmap de estudos: {links}",
   "ui.terminal.reveal": "Mostrar a solução",
   "ui.terminal.revealed_note": "Solução mostrada: o desafio ainda não conta como resolvido, mas você pode responder mesmo assim.",
   "ui.terminal.solution": "**Solução**",

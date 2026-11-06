@@ -1,5 +1,6 @@
 """Simulated Command Prompt (Terminal tab, phase 3): commands, the challenges and agreement with cmd.exe."""
 
+import os
 import shutil
 import subprocess
 import sys
@@ -127,11 +128,14 @@ def real_cmd(tmp_path_factory, challenge_set):
 
 
 def test_simulator_matches_the_real_cmd(real_cmd, cmd):
+    # Windows' own tools first: from Git Bash, PATH finds the Unix `find` and `sort` before System32's.
+    system32 = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32")
+    env = {**os.environ, "PATH": system32 + os.pathsep + os.environ.get("PATH", "")}
     for line in SAME_AS_REAL:
         cmd.cwd = HOME
         simulated = cmd.run(line)
         # A string, not a list: cmd.exe has its own quoting rules, so the line must reach it unchanged.
         real = subprocess.run("cmd /d /q /c " + line, cwd=real_cmd, capture_output=True, text=True,
-                              encoding="utf-8", errors="replace")
+                              encoding="utf-8", errors="replace", env=env)
         assert simulated.output == real.stdout.replace("\r", ""), line
         assert bool(simulated.error) == bool(real.stderr.strip()), line
