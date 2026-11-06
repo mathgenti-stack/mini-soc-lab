@@ -260,11 +260,52 @@ async function clearHere() {
   cloudLab = {};
 }
 
+// ---------------------------------------------------------------- feedback e painel do admin
+// Feedback: qualquer pessoa envia (com ou sem login); só o admin lê (regras na tabela public.feedback).
+export async function sendFeedback(page, context, message) {
+  const user = await currentUser();
+  const row = { page, context: String(context || "").slice(0, 300), message: String(message).trim().slice(0, 2000) };
+  if (user) row.user_id = user.id;
+  const { error } = await sb.from("feedback").insert(row);
+  if (error) throw error;
+}
+
+export async function isAdmin() {
+  if (!(await currentUser())) return false;
+  const { data, error } = await sb.rpc("is_admin");
+  return !error && data === true;
+}
+
+// Para o painel: todas as contas com o progresso, e todo o feedback (o servidor recusa quem não é admin).
+export async function adminData() {
+  const [people, fb] = await Promise.all([
+    sb.rpc("admin_overview"),
+    sb.from("feedback").select("id,created_at,user_id,page,context,message,resolved").order("created_at", { ascending: false }).limit(500),
+  ]);
+  if (people.error) throw people.error;
+  if (fb.error) throw fb.error;
+  return { people: people.data || [], feedback: fb.data || [] };
+}
+
+export async function markFeedback(id, resolved) {
+  const { error } = await sb.from("feedback").update({ resolved }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteFeedback(id) {
+  const { error } = await sb.from("feedback").delete().eq("id", id);
+  if (error) throw error;
+}
+
 // ---------------------------------------------------------------- a parte visível
 const CSS = `
 .sc-chip{display:inline-flex;align-items:center;gap:8px;margin-left:auto;padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:inherit;font:600 14px var(--sans,system-ui);cursor:pointer;max-width:50%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none}
 .sc-chip:hover{background:rgba(255,255,255,.16)}
-.sc-float{position:fixed;right:16px;bottom:16px;z-index:1000;background:#0e1b2a;color:#e8f1fa;border-color:#223244;max-width:320px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.sc-dock{position:fixed;right:16px;bottom:16px;z-index:1000;display:flex;gap:8px;align-items:center}
+.sc-float{background:#0e1b2a;color:#e8f1fa;border-color:#223244;max-width:280px;box-shadow:0 4px 14px rgba(0,0,0,.25);margin:0}
+@media (max-width:999px){.sc-dock.curso{bottom:84px}}
+.sc-in textarea{width:100%;box-sizing:border-box;min-height:130px;padding:12px 14px;border-radius:12px;border:1px solid var(--bd,#d6dee8);background:var(--sf,#fff);color:var(--tx,#101b28);font:15px/1.5 var(--sans,system-ui);margin-top:10px;resize:vertical}
+.sc-ctx{font:12px var(--mono,monospace);color:var(--mu,#566478);background:rgba(127,127,127,.1);border-radius:8px;padding:6px 10px;margin-top:8px;word-break:break-word}
 .sc-dlg{border:1px solid var(--bd,#d6dee8);border-radius:16px;padding:0;max-width:440px;width:calc(100% - 32px);background:var(--sf,#fff);color:var(--tx,#101b28);font:15px/1.5 var(--sans,system-ui)}
 .sc-dlg::backdrop{background:rgba(0,0,0,.45)}
 .sc-in{padding:22px}
@@ -386,9 +427,19 @@ function openDialog(onChange) {
       <p class="sc-err" id="sc-err"></p>
       <div class="sc-row"><button class="sc-b" id="sc-x">Fechar</button><button class="sc-b p" id="sc-out">Sair</button></div>
       <p class="sc-mu">Ao sair, o progresso continua salvo na sua conta e some deste navegador (bom para computador compartilhado).</p>
+      <div id="sc-admin"></div>
       <hr>${privacy}
       <div class="sc-row"><button class="sc-b r" id="sc-del">Apagar minha conta</button></div>`;
     box.querySelector("#sc-x").onclick = () => dlg.close();
+    isAdmin().then((yes) => {
+      const slot = box.querySelector("#sc-admin");
+      if (!yes || !slot) return;
+      slot.innerHTML = `<div class="sc-row"><button class="sc-b p" id="sc-adm">📊 Painel do admin</button></div>`;
+      slot.querySelector("#sc-adm").onclick = () => {
+        dlg.close();
+        if (window.soclabOpenAdmin) window.soclabOpenAdmin(); else location.href = "estudar.html#admin";
+      };
+    });
     box.querySelector("#sc-rename").onclick = (e) => { e.preventDefault(); showName(false); };
     box.querySelector("#sc-out").onclick = async () => {
       await signOut();
@@ -420,11 +471,54 @@ function paintChip(user) {
   setStatus(statusText ? (statusText.startsWith("salvo") ? "ok" : "erro") : "");
 }
 
+// Janela "Dar feedback". where(): onde a pessoa está (vai junto com a mensagem).
+function openFeedback(page, where) {
+  let dlg = document.getElementById("sc-fb");
+  if (!dlg) {
+    dlg = el(`<dialog class="sc-dlg" id="sc-fb" aria-labelledby="sc-fbt"><div class="sc-in"></div></dialog>`);
+    document.body.appendChild(dlg);
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+  }
+  const box = dlg.querySelector(".sc-in");
+  let ctx = "";
+  try { ctx = String(where() || "").slice(0, 300); } catch (e) {}
+  box.innerHTML = `<h2 id="sc-fbt">Dar feedback</h2>
+    <p>Achou um erro? Algo ficou confuso? Tem uma ideia? Conta aqui. Vai direto para quem cuida do curso.</p>
+    <form id="sc-ff"><textarea id="sc-msg" maxlength="2000" required placeholder="Ex.: no desafio linux-03 eu não entendi o que é para responder."></textarea>
+    ${ctx ? `<div class="sc-ctx">Vai junto: ${escHtml(ctx)}</div>` : ""}
+    <p class="sc-err" id="sc-err"></p>
+    <div class="sc-row"><button type="button" class="sc-b" id="sc-fx">Cancelar</button><button class="sc-b p" id="sc-fs">Enviar</button></div></form>
+    <p class="sc-mu" id="sc-who"></p>`;
+  currentUser().then((u) => {
+    const w = box.querySelector("#sc-who");
+    if (w) w.textContent = u ? `Enviado como ${nameOf(u) || u.email}.` : "Você não entrou na conta: o feedback vai sem nome. Se quiser resposta, escreva seu contato na mensagem.";
+  });
+  box.querySelector("#sc-fx").onclick = () => dlg.close();
+  box.querySelector("#sc-ff").onsubmit = async (e) => {
+    e.preventDefault();
+    const b = box.querySelector("#sc-fs");
+    b.disabled = true; b.textContent = "Enviando…";
+    try {
+      await sendFeedback(page, ctx, box.querySelector("#sc-msg").value);
+      box.innerHTML = `<h2>Obrigado! 🙌</h2><p>Seu feedback foi enviado.</p><div class="sc-row"><button class="sc-b p" id="sc-fok">Fechar</button></div>`;
+      box.querySelector("#sc-fok").onclick = () => dlg.close();
+    } catch (err) { box.querySelector("#sc-err").textContent = friendly(err); b.disabled = false; b.textContent = "Enviar"; }
+  };
+  if (!dlg.open) dlg.showModal();
+  setTimeout(() => box.querySelector("#sc-msg")?.focus(), 50);
+}
+
+function dock(page, where) {
+  const d = el(`<div class="sc-dock ${page}"><button type="button" class="sc-chip sc-float" id="sc-fbb">💬 Feedback</button></div>`);
+  d.querySelector("#sc-fbb").onclick = () => openFeedback(page, where);
+  document.body.appendChild(d);
+  return d;
+}
+
 // Página do curso. onReload: o progresso daqui mudou (veio da nuvem, ou a conta saiu): redesenhe.
-export async function mountCourse(container, onReload) {
+export async function mountCourse(onReload) {
   addStyle();
-  chip = el(`<button class="sc-chip" type="button" id="sc-chip"></button>`);
-  container.appendChild(chip);
+  chip = el(`<button class="sc-chip sc-float" type="button" id="sc-chip"></button>`);
   const hi = document.querySelector("#hero .hi"), av = document.querySelector("#hero .av");
   const greet = (user) => {
     const n = nameOf(user);
@@ -442,7 +536,11 @@ export async function mountCourse(container, onReload) {
     paintChip(user);
   };
   chip.onclick = () => openDialog(refresh);
-  const fromHash = () => { if (location.hash === "#conta") { history.replaceState(null, "", location.pathname); openDialog(refresh); } };
+  dock("curso", () => (window.soclabWhere ? window.soclabWhere() : "")).appendChild(chip);
+  const fromHash = () => {
+    if (location.hash === "#conta") { history.replaceState(null, "", location.pathname); openDialog(refresh); }
+    if (location.hash === "#admin" && window.soclabOpenAdmin) { history.replaceState(null, "", location.pathname); window.soclabOpenAdmin(); }
+  };
   window.addEventListener("hashchange", fromHash);
   fromHash();
   await refresh();
@@ -450,11 +548,22 @@ export async function mountCourse(container, onReload) {
   window.addEventListener("focus", () => currentUser().then((u) => u && syncCourse().then(onReload).catch(() => {})));
 }
 
+// Onde a pessoa está no lab: a aba aberta e o título do desafio (o melhor que dá para ler da página).
+function labWhere() {
+  const tab = document.querySelector('[role="tab"][aria-selected="true"]');
+  const panel = document.querySelector('[role="tabpanel"]:not([hidden])') || document;
+  // o desafio escolhido (caixa "Desafio": "linux-01 · Qual o tamanho do log?"); senão, o primeiro título
+  const pick = [...panel.querySelectorAll('[data-testid="stSelectbox"] input')].map((x) => (x.value || x.getAttribute("aria-label") || "").trim())
+    .find((t) => /\b(linux|ps|cmd)-\d+/.test(t));
+  const head = pick || [...panel.querySelectorAll("h2, h3")].map((x) => x.textContent.trim()).find(Boolean);
+  return ["Lab", tab && tab.textContent.trim(), head].filter(Boolean).join(" · ");
+}
+
 // Página do lab: só um botão no canto (a conta é gerenciada nas páginas do curso).
 export async function mountLab(user) {
   addStyle();
   chip = el(`<a class="sc-chip sc-float" id="sc-chip" href="estudar.html#conta"></a>`);
-  document.body.appendChild(chip);
+  dock("lab", labWhere).appendChild(chip);
   paintChip(user);
   if (!user) chip.title = "Sem login o progresso fica só neste navegador. Entre pelas páginas do curso.";
 }

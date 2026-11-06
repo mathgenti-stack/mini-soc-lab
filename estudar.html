@@ -1736,11 +1736,14 @@ rC();rT();$("s2").textContent=MQ.length;$("s3").textContent=TOP.length;if(!openH
 /* de volta do lab (outra aba): relê o progresso */
 loadLab().then(refreshViews);window.addEventListener("focus",()=>loadLab().then(refreshViews));
 /* o progresso deste navegador mudou (veio da nuvem, ou a conta saiu): relê e redesenha */
+/* onde a pessoa está (vai junto com o feedback) */
+window.soclabWhere=()=>{const on=[...document.querySelectorAll("main>div")].find(x=>!x.classList.contains("hide"));const n=on?+on.id.slice(1):7;if(n==4&&TP)return"Curso · "+TP.n+" · aba "+TS;return"Curso · "+(PHT[n]?PHT[n][0]:"Hoje")};
 window.soclabReload=()=>{let o={};try{o=JSON.parse(localStorage.getItem("soclab-curso")||"{}")||{}}catch(e){}Object.keys(S).forEach(k=>delete S[k]);Object.assign(S,{done:{},known:{},notes:[]},o);S.miss=S.miss||{};S.hist=S.hist||[];S.tdone=S.tdone||{};S.apps=S.apps||[];rC();loadLab().then(refreshViews)};
 </script>
 <script type="module">
 /* conta: login por e-mail e progresso na nuvem (opcional) */
 import {mountCourse,cloudLabFiles,courseChanged} from "./conta.js";
-window.soclabChanged=courseChanged;window.soclabCloudLab=cloudLabFiles;
-mountCourse(document.querySelector("#hero .hr"),()=>window.soclabReload());
+import {openAdmin} from "./admin.js";
+window.soclabChanged=courseChanged;window.soclabCloudLab=cloudLabFiles;window.soclabOpenAdmin=openAdmin;
+mountCourse(()=>window.soclabReload());
 </script></body></html>

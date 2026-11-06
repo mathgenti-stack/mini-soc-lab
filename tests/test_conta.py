@@ -11,7 +11,7 @@ CONTA = (ROOT / "conta.js").read_text(encoding="utf-8")
 
 
 def test_only_the_public_key_is_in_the_site():
-    for name in ("conta.js", "index.html", "estudar.html", "privacidade.html"):
+    for name in ("conta.js", "admin.js", "index.html", "estudar.html", "privacidade.html"):
         text = (ROOT / name).read_text(encoding="utf-8")
         assert "sb_secret_" not in text and "service_role" not in text, name
     assert re.search(r'SUPABASE_KEY = "sb_publishable_\w+"', CONTA)
@@ -28,6 +28,7 @@ def test_the_lab_still_opens_without_conta():
 def test_course_page_wiring():
     page = (ROOT / "estudar.html").read_text(encoding="utf-8")
     assert 'import {mountCourse,cloudLabFiles,courseChanged} from "./conta.js";' in page
+    assert 'import {openAdmin} from "./admin.js";' in page and "window.soclabWhere=" in page
     assert "if(window.soclabChanged)window.soclabChanged()" in page  # save() tells conta.js
     assert "window.soclabReload=" in page and "window.soclabCloudLab" in page
 
@@ -44,6 +45,16 @@ def test_privacy_notice_and_account_deletion():
     for text in ("Estados Unidos", "Apagar minha conta", "LGPD", "UK GDPR"):
         assert text in privacy
     assert 'href="privacidade.html"' in CONTA and 'sb.rpc("delete_my_account")' in CONTA
+
+
+def test_admin_and_feedback_are_guarded_by_the_server():
+    sql = next((ROOT / "supabase" / "migrations").glob("*_admin_and_feedback.sql")).read_text(encoding="utf-8")
+    assert "if not public.is_admin() then" in sql  # admin_overview refuses everyone else
+    assert 'for select to authenticated using ((select public.is_admin()))' in sql  # only the admin reads feedback
+    assert "grant insert (page, context, message, user_id) on public.feedback to anon, authenticated;" in sql
+    assert "revoke all on public.admins from anon, authenticated;" in sql
+    admin = (ROOT / "admin.js").read_text(encoding="utf-8")
+    assert "if (!(await isAdmin()))" in admin and 'from "./conta.js"' in admin
 
 
 def test_schema_record_has_row_level_security():
