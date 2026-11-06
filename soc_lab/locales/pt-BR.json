@@ -1,6 +1,8 @@
 {
   "ui.language_selector": "🌐 Language / Idioma",
   "ui.sidebar.caption": "Triagem de logs de autenticação com dados sintéticos",
+  "ui.sidebar.study": "Estudar (páginas do curso)",
+  "ui.sidebar.study_help": "Explicações, checklist e quiz de cada assunto. Os desafios que você resolve aqui aparecem lá.",
   "ui.source.label": "Fonte de dados",
   "ui.source.sample": "Dataset de exemplo",
   "ui.source.generate": "Gerar novo dataset sintético",

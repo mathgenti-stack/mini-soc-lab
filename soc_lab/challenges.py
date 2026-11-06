@@ -23,6 +23,7 @@ from .i18n import DEFAULT_LANGUAGE, LANGUAGES
 CHALLENGES_PATH = PROJECT_ROOT / "data" / "terminal" / "challenges.json"
 ENVIRONMENTS = ("linux", "powershell", "cmd")
 TEXT_FIELDS = ("title", "question", "explanation")
+COURSE_URL = "https://mini-soc-lab.matheusrossi1998.workers.dev/estudar.html"  # the study pages on the site
 ROADMAP_TOPIC_ID = re.compile(r"^[a-z0-9-]+$")  # a plain #name: the only fragment the roadmap page receives
 
 
@@ -79,12 +80,15 @@ class ChallengeSet:
     def find(self, challenge_id: str) -> Challenge | None:
         return next((c for c in self.challenges if c.id == challenge_id), None)
 
-    def roadmap_links(self, challenge: Challenge, lang: str = DEFAULT_LANGUAGE) -> list[tuple[str, str]]:
-        """(topic name, link) for each roadmap topic that explains the challenge."""
+    def roadmap_links(self, challenge: Challenge, lang: str = DEFAULT_LANGUAGE,
+                      base_url: str | None = None) -> list[tuple[str, str]]:
+        """(topic name, link) for each roadmap topic that explains the challenge.
+
+        base_url replaces the file's url, e.g. a relative "estudar.html" on the lab's own site."""
         if not self.roadmap:
             return []
-        topics = self.roadmap["topics"]
-        return [(topics[topic].get(lang) or topics[topic][DEFAULT_LANGUAGE], f"{self.roadmap['url']}#{topic}")
+        topics, url = self.roadmap["topics"], base_url or self.roadmap["url"]
+        return [(topics[topic].get(lang) or topics[topic][DEFAULT_LANGUAGE], f"{url}#{topic}")
                 for topic in challenge.roadmap]
 
 

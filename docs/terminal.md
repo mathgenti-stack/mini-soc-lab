@@ -121,14 +121,15 @@ There are 36 challenges: 14 for Linux, 14 for PowerShell and 8 for CMD.
 
 **CMD**, in four levels: counting with `find /c` (and the `find /c /v ""` trick that counts lines), case with `/i`, several words at once with `findstr`, CSV values with their commas, chains of `find` as an AND, a user's events in the Windows XML, and cutting a line into words with `for /f`.
 
-### Linked to the study roadmap
+### The study pages (`estudar.html`)
 
-The challenges are tied to the author's study roadmap (a separate page on claude.ai, in Portuguese), so studying and practising point to each other:
+The course's explanations live next to the lab on the website, in `estudar.html` (in Portuguese): topics with an explanation, a checklist and a quiz, plus review tools (recap, flashcards, scenarios, diagrams, glossary). It is a single page with no server. Open it from the **Study** button in the dashboard's sidebar. Study and practice point to each other:
 
-- **From the lab to the roadmap.** Under the hints, each challenge shows *Stuck on the idea? Review it in the study roadmap*, with links to the topics that explain it (for example `linux-03` → Linux basics and Operating system security). The lab does not repeat the theory; the roadmap opens directly on that topic (`<roadmap url>#linux`).
-- **From the roadmap to the lab.** Each roadmap topic with exercises has a *Praticar* (practise) tab listing them, and its checklist has an item to solve them. Each one opens the lab directly on that challenge with `?challenge=<id>`: the Terminal tab, the right shell and the challenge chosen. The link is read once and then removed from the address.
+- **From a challenge to the explanation.** Under the hints, each challenge shows *Stuck on the idea?*, with links to the topics that explain it (for example `linux-03` → Linux basics and Operating system security). The page opens directly on that topic (`estudar.html#linux`).
+- **From a topic to the challenges.** Each topic with exercises has a *Praticar* (practise) tab listing them, read from `challenges.json`. Each one opens the lab directly on that challenge with `?challenge=<id>`: the Terminal tab, the right shell and the challenge chosen. The link is read once and then removed from the address.
+- **Progress.** On the website, the lab saves its progress in the browser: `index.html` keeps `/mnt` in IndexedDB (`idbfsMountpoints`) and points `SOC_LAB_ANSWERS_DIR` at `/mnt/soclab`, so solved challenges survive a reload. `estudar.html` reads those files (read-only), shows ✅ next to solved challenges and ticks the topic's "Praticar no SOC Lab" checklist item when all are solved. The study page keeps its own progress in `localStorage`. Both stay in that browser: there are no accounts yet.
 
-The topics live in `challenges.json` (`roadmap.topics`, and `roadmap` in each challenge). The roadmap's list of exercises is generated from the same file, so after adding a challenge, update both.
+To try both together on your computer, serve the folder as a static site: `python -m http.server 8000`, then open http://localhost:8000/ (the lab) and http://localhost:8000/estudar.html. The Streamlit dashboard (`streamlit run`) links to the study pages on the website instead.
 
 Progress is saved per shell, in `training_answers/terminal_<shell>.json` (`linux`, `powershell`, `cmd`). A challenge counts as solved only when answered. Showing the solution marks it 👁️ but does not count it as solved.
 
@@ -153,5 +154,5 @@ Progress is saved per shell, in `training_answers/terminal_<shell>.json` (`linux
 - Texts are inside the file, in every language, so any terminal can use it without the Python translation files.
 - `answers` lists every accepted answer. Case, accents, surrounding quotes and extra spaces are ignored.
 - `solution` must print exactly the answer. `tests/test_terminal.py` checks every answer against the lab data in Python; the simulator tests run every solution in the simulated shell; with Docker running, the bash and PowerShell solutions also run in the real container. If the logs or the generator change, these tests say which answers to update.
-- `roadmap` lists the study roadmap topics that explain the challenge. They must be declared in the top-level `roadmap.topics` (a plain lowercase id and a name per language), and `roadmap.url` must be `https://`.
+- `roadmap` lists the study page topics (`estudar.html`) that explain the challenge. They must be declared in the top-level `roadmap.topics` (a plain lowercase id and a name per language), and `roadmap.url` must be `https://`.
 - Environments: `linux`, `powershell` and `cmd`. One container serves bash and PowerShell, so it mounts the files of every environment.

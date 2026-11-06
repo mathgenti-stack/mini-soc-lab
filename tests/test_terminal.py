@@ -184,11 +184,26 @@ def test_every_challenge_points_to_the_roadmap(challenge_set):
         assert challenge.roadmap, challenge.id
         used.update(challenge.roadmap)
         for name, url in challenge_set.roadmap_links(challenge, "pt-BR"):
-            assert name and url.startswith("https://claude.ai/artifact/") and url.count("#") == 1
+            assert name and url.startswith(challenges.COURSE_URL + "#") and url.count("#") == 1
     assert used == set(challenge_set.roadmap["topics"])
     links = challenge_set.roadmap_links(challenge_set.get("linux-03"), "pt-BR")
     assert [name for name, _ in links] == ["Linux Básico", "Segurança do SO (SSH, senhas)"]
     assert links[0][1].endswith("#linux")
+
+
+def test_course_pages_match_the_lab():
+    """estudar.html (the study pages) reads the lab's challenges and the progress the browser build saves."""
+    page = (ROOT / "estudar.html").read_text(encoding="utf-8")
+    index = (ROOT / "index.html").read_text(encoding="utf-8")
+    for topic in load_challenges().roadmap["topics"]:
+        assert f'{{id:"{topic}",' in page, topic  # every topic a challenge points to exists on the page
+    assert 'fetch("data/terminal/challenges.json"' in page
+    # the lab keeps its answers in /mnt/soclab, which the browser build stores in IndexedDB "/mnt"
+    assert 'idbfsMountpoints: ["/mnt"]' in index and 'SOC_LAB_ANSWERS_DIR: "/mnt/soclab"' in index
+    assert 'indexedDB.open("/mnt")' in page and '"/mnt/soclab/terminal_"+e+".json"' in page
+    assert challenges.progress_path(Path("/mnt/soclab"), "linux").as_posix() == "/mnt/soclab/terminal_linux.json"
+    for personal in ("Matheus", "Tell me about yourself", "former IT technician", "socrm"):
+        assert personal not in page, personal
 
 
 def test_progress_round_trip(tmp_path):
@@ -317,7 +332,7 @@ def test_wrong_answer_and_reveal(app):
 def test_roadmap_link_under_the_hints(app):
     app.run()
     app.selectbox(key="terminal_challenge_linux").set_value("linux-03").run()
-    shown = [m.value for m in app.markdown if "claude.ai/artifact/" in m.value]
+    shown = [m.value for m in app.markdown if "estudar.html#" in m.value]
     assert len(shown) == 1 and "#linux)" in shown[0] and "#segso)" in shown[0]
 
 

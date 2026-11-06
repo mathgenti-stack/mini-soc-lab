@@ -131,6 +131,10 @@ def result_scale(domain: list[str]) -> alt.Scale:
 # ---------------------------------------------------------------------------
 st.sidebar.title("Mini SOC Lab")
 st.sidebar.caption(T("ui.sidebar.caption"))
+# The course's study pages live next to the lab on the website (estudar.html); a local dashboard links to the site.
+COURSE_URL = "estudar.html" if terminal.IS_BROWSER else challenges.COURSE_URL
+st.sidebar.link_button(T("ui.sidebar.study"), COURSE_URL, icon=":material/school:", help=T("ui.sidebar.study_help"),
+                       width="stretch")
 
 source_choice = st.sidebar.radio(
     T("ui.source.label"), DATA_SOURCES, format_func=lambda key: T(f"ui.source.{key}"),
@@ -1002,7 +1006,7 @@ def render_challenges(challenge_set, environment: str) -> None:
             st.markdown(challenge.hint(number, lang))
 
     # Stuck on the idea rather than the command? The study roadmap explains it; the lab does not repeat it.
-    links = challenge_set.roadmap_links(challenge, lang)
+    links = challenge_set.roadmap_links(challenge, lang, base_url=COURSE_URL)
     if links:
         st.markdown(T("ui.terminal.roadmap", links=" · ".join(f"[{name}]({url})" for name, url in links)))
 

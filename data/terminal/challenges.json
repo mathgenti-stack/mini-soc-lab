@@ -2,8 +2,8 @@
   "format_version": 1,
   "about": "Terminal challenges for the Mini SOC Lab. One file for every phase: the Docker terminal (phase 1), PowerShell (phase 2) and the simulated in-browser terminal (phase 3). Paths in 'files' are relative to the terminal's home directory; 'environments.<name>.files' says which lab file each path is. 'solution' prints exactly the answer, so tests can run it in the real container.",
   "roadmap": {
-    "about": "The study roadmap (a page on claude.ai). Each challenge lists the roadmap topics that explain it; a topic opens at url#topic.",
-    "url": "https://claude.ai/artifact/PM8Wy2foSPrGrTfLNG8rUA",
+    "about": "The course's study pages (estudar.html, on the same site as the lab). Each challenge lists the topics that explain it; a topic opens at url#topic.",
+    "url": "https://mini-soc-lab.matheusrossi1998.workers.dev/estudar.html",
     "topics": {
       "linux": {"en": "Linux basics", "pt-BR": "Linux Básico"},
       "wcli": {"en": "Windows command line", "pt-BR": "Windows CLI"},

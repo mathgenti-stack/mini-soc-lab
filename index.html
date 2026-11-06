@@ -71,6 +71,9 @@
           entrypoint: "streamlit_app.py",
           files: Object.fromEntries(paths.map((p) => [p, { url: "./" + p }])),
           streamlitConfig: { "client.toolbarMode": "viewer" },
+          // Progress survives a reload: /mnt is kept in the browser (IndexedDB). estudar.html reads it from there.
+          idbfsMountpoints: ["/mnt"],
+          env: { SOC_LAB_ANSWERS_DIR: "/mnt/soclab" },
         },
         document.getElementById("root"),
       );

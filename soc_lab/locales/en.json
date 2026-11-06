@@ -1,6 +1,8 @@
 {
   "ui.language_selector": "🌐 Language / Idioma",
   "ui.sidebar.caption": "Authentication log triage on synthetic data",
+  "ui.sidebar.study": "Study (course pages)",
+  "ui.sidebar.study_help": "Explanations, checklists and quizzes for each topic, in Portuguese. Challenges you solve here show up there.",
   "ui.source.label": "Data source",
   "ui.source.sample": "Sample dataset",
   "ui.source.generate": "Generate new synthetic dataset",
