@@ -187,7 +187,7 @@ def test_every_challenge_points_to_the_roadmap(challenge_set):
             assert name and url.startswith(challenges.COURSE_URL + "#") and url.count("#") == 1
     assert used == set(challenge_set.roadmap["topics"])
     links = challenge_set.roadmap_links(challenge_set.get("linux-03"), "pt-BR")
-    assert [name for name, _ in links] == ["Linux Básico", "Segurança do SO (SSH, senhas)"]
+    assert [name for name, _ in links] == ["Linux Básico", "Segurança do SO (SSH, senhas)", "Logs e Eventos (Event IDs, auth.log)"]
     assert links[0][1].endswith("#linux")
 
 

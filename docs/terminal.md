@@ -129,6 +129,16 @@ The course's explanations live next to the lab on the website, in `estudar.html`
 - **From a topic to the challenges.** Each topic with exercises has a *Praticar* (practise) tab listing them, read from `challenges.json`. Each one opens the lab directly on that challenge with `?challenge=<id>`: the Terminal tab, the right shell and the challenge chosen. The link is read once and then removed from the address.
 - **Progress.** On the website, the lab saves its progress in the browser: `index.html` keeps `/mnt` in IndexedDB (`idbfsMountpoints`) and points `SOC_LAB_ANSWERS_DIR` at `/mnt/soclab`, so solved challenges survive a reload. `estudar.html` reads those files (read-only), shows ✅ next to solved challenges and ticks the topic's "Praticar no SOC Lab" checklist item when all are solved. The study page keeps its own progress in `localStorage`. Without an account, both stay in that browser.
 
+#### Editing the course
+
+The topics are organised as a path of 7 modules (*Trilha*). Inside a topic, a step bar leads the learner through **read → practise in the lab → quiz → checklist**, and the *Hoje* (today) page always shows where to continue. The topics that were added from what junior SOC job ads ask for (PowerShell, logs, SIEM queries, phishing, triage and incident response) live as sources in `curso/`:
+
+- `curso/topicos_novos.py`: the new topics (text, checklist), their 1-minute summaries and the path (`TRILHA`).
+- `curso/quiz_novo.py`: their quiz questions, with why each wrong answer is wrong.
+- `curso/visual.css`: the look of the page.
+
+After editing them, run `python curso/montar.py`: it writes them into `estudar.html` between `/* >>> curso */` and `/* <<< curso */` marks and can be run again safely. A test fails if the page is not up to date. The older topics are edited directly in `estudar.html`.
+
 #### Optional account: progress in the cloud (`conta.js`)
 
 People can sign in with their e-mail to keep their progress in the cloud and continue on another computer. There is no password: [Supabase](https://supabase.com) Auth sends a 6-digit code (`signInWithOtp` + `verifyOtp`). Everything still works without signing in.

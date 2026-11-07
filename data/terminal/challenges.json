@@ -11,7 +11,11 @@
       "ms": {"en": "Microsoft administration (Event IDs, lockouts, Entra ID)", "pt-BR": "Administração Microsoft (Event IDs, bloqueios, Entra ID)"},
       "soc": {"en": "SOC in practice", "pt-BR": "SOC na Prática"},
       "redes": {"en": "Networking (IP addresses)", "pt-BR": "Redes (endereços IP)"},
-      "cloud": {"en": "Cloud", "pt-BR": "Cloud"}
+      "cloud": {"en": "Cloud", "pt-BR": "Cloud"},
+      "powershell": {"en": "PowerShell for analysis", "pt-BR": "PowerShell para Análise"},
+      "logs": {"en": "Logs and events (Windows Event IDs, auth.log)", "pt-BR": "Logs e Eventos (Event IDs, auth.log)"},
+      "siem": {"en": "SIEM and queries (filter, count, sort)", "pt-BR": "SIEM e Consultas (filtrar, contar, ordenar)"},
+      "ir": {"en": "Alert triage and incident response", "pt-BR": "Triagem e Resposta a Incidentes"}
     }
   },
   "environments": {
@@ -99,7 +103,7 @@
       "level": 2,
       "topic": "grep",
       "files": ["logs/linux_auth.log"],
-      "roadmap": ["linux", "segso"],
+      "roadmap": ["linux", "segso", "logs"],
       "title": {"en": "Count the failed passwords", "pt-BR": "Conte as senhas erradas"},
       "question": {
         "en": "OpenSSH writes `Failed password` for every wrong password. How many lines in `logs/linux_auth.log` contain it?",
@@ -122,7 +126,7 @@
       "level": 2,
       "topic": "pipes",
       "files": ["logs/linux_auth.log"],
-      "roadmap": ["linux", "segso"],
+      "roadmap": ["linux", "segso", "logs"],
       "title": {"en": "Find the attacker", "pt-BR": "Encontre o atacante"},
       "question": {
         "en": "Which IP address has the most `Failed password` lines?",
@@ -168,7 +172,7 @@
       "level": 2,
       "topic": "grep",
       "files": ["logs/linux_auth.log"],
-      "roadmap": ["linux", "segso"],
+      "roadmap": ["linux", "segso", "logs"],
       "title": {"en": "Which account was locked?", "pt-BR": "Qual conta foi bloqueada?"},
       "question": {
         "en": "After too many failures, `pam_faillock` locks the account. Which account was locked?",
@@ -191,7 +195,7 @@
       "level": 3,
       "topic": "investigation",
       "files": ["logs/linux_auth.log"],
-      "roadmap": ["linux", "segso"],
+      "roadmap": ["linux", "segso", "ir"],
       "title": {"en": "What did m.jones do?", "pt-BR": "O que o m.jones fez?"},
       "question": {
         "en": "m.jones failed three times, then got in. Which command did they run with `sudo`? Answer with the full command as the log shows it.",
@@ -214,7 +218,7 @@
       "level": 3,
       "topic": "csv",
       "files": ["logs/sample_auth_logs.csv"],
-      "roadmap": ["linux", "soc"],
+      "roadmap": ["linux", "soc", "siem"],
       "title": {"en": "Failed logons in the lab dataset", "pt-BR": "Logins com falha no dataset do lab"},
       "question": {
         "en": "`logs/sample_auth_logs.csv` is the lab's two-week dataset. Columns are separated by commas: column 5 is `event_type`, column 6 is `result`. How many rows are a `LOGON` with result `FAILURE`?",
@@ -237,7 +241,7 @@
       "level": 3,
       "topic": "csv",
       "files": ["logs/sample_auth_logs.csv"],
-      "roadmap": ["linux", "redes"],
+      "roadmap": ["linux", "redes", "siem"],
       "title": {"en": "The noisiest external address", "pt-BR": "O endereço externo mais barulhento"},
       "question": {
         "en": "Internal addresses start with `10.`. Which address *outside* `10.0.0.0/8` has the most failures (column 6 `FAILURE`, column 4 `source_ip`)?",
@@ -260,7 +264,7 @@
       "level": 3,
       "topic": "investigation",
       "files": ["logs/sample_auth_logs.csv"],
-      "roadmap": ["linux", "soc"],
+      "roadmap": ["linux", "soc", "siem"],
       "title": {"en": "Password spray: how wide?", "pt-BR": "Password spray: qual o alcance?"},
       "question": {
         "en": "203.0.113.88 sprayed passwords. How many *different* accounts failed to log on from this address?",
@@ -283,7 +287,7 @@
       "level": 3,
       "topic": "investigation",
       "files": ["logs/sample_auth_logs.csv"],
-      "roadmap": ["linux", "soc"],
+      "roadmap": ["linux", "soc", "ir"],
       "title": {"en": "Did the spray work?", "pt-BR": "O spray funcionou?"},
       "question": {
         "en": "Which account logged on *successfully* from 203.0.113.88?",
@@ -305,7 +309,7 @@
       "level": 3,
       "topic": "investigation",
       "files": ["logs/sample_auth_logs.csv"],
-      "roadmap": ["linux", "ms"],
+      "roadmap": ["linux", "ms", "ir"],
       "title": {"en": "A late Remote Desktop session", "pt-BR": "Uma Área de Trabalho Remota tarde da noite"},
       "question": {
         "en": "R006 flagged c.evans for a logon of type `REMOTE_INTERACTIVE` (Remote Desktop). To which host?",
@@ -351,7 +355,7 @@
       "level": 4,
       "topic": "windows",
       "files": ["logs/windows_security.xml"],
-      "roadmap": ["linux", "ms"],
+      "roadmap": ["linux", "ms", "logs"],
       "title": {"en": "Windows events from Linux", "pt-BR": "Eventos do Windows no Linux"},
       "question": {
         "en": "`logs/windows_security.xml` is a Windows Security log saved as XML, one event per line. Event ID 4625 is a failed logon. How many 4625 events are there?",
@@ -374,7 +378,7 @@
       "level": 1,
       "topic": "basics",
       "files": ["logs/linux_auth.log", "logs/windows_security.xml", "logs/windows_security.evtx", "logs/entra_signins.json", "logs/sample_auth_logs.csv"],
-      "roadmap": ["wcli"],
+      "roadmap": ["wcli", "powershell"],
       "title": {"en": "What is in the logs folder?", "pt-BR": "O que tem na pasta de logs?"},
       "question": {
         "en": "In PowerShell, commands return **objects**, not text. `Get-ChildItem logs` lists the folder (`ls` and `dir` are aliases for it). How many files are in `logs`? Answer with the number only.",
@@ -397,7 +401,7 @@
       "level": 1,
       "topic": "csv",
       "files": ["logs/sample_auth_logs.csv"],
-      "roadmap": ["wcli"],
+      "roadmap": ["wcli", "powershell"],
       "title": {"en": "A CSV becomes objects", "pt-BR": "Um CSV vira objetos"},
       "question": {
         "en": "`Import-Csv logs/sample_auth_logs.csv` reads the two-week dataset and turns each row into an object, with one property per column. How many rows (events) are there, not counting the header?",
@@ -420,7 +424,7 @@
       "level": 1,
       "topic": "objects",
       "files": ["logs/sample_auth_logs.csv"],
-      "roadmap": ["wcli"],
+      "roadmap": ["wcli", "powershell"],
       "title": {"en": "Which column is the Event ID?", "pt-BR": "Qual coluna é o Event ID?"},
       "question": {
         "en": "`Get-Member` lists the properties of an object. In the dataset, which column holds the Windows **Event ID** (4624, 4625...)? Careful: two columns have *event* in the name. Answer with the column name.",
@@ -443,7 +447,7 @@
       "level": 2,
       "topic": "csv",
       "files": ["logs/sample_auth_logs.csv"],
-      "roadmap": ["ms"],
+      "roadmap": ["ms", "powershell", "logs"],
       "title": {"en": "Count the failed logons", "pt-BR": "Conte os logins com falha"},
       "question": {
         "en": "Event ID **4625** means *an account failed to log on*. Using `Where-Object`, how many 4625 events are in the dataset?",
@@ -466,7 +470,7 @@
       "level": 2,
       "topic": "pipes",
       "files": ["logs/sample_auth_logs.csv"],
-      "roadmap": ["ms", "soc"],
+      "roadmap": ["ms", "soc", "powershell", "siem"],
       "title": {"en": "Who fails the most?", "pt-BR": "Quem mais falha?"},
       "question": {
         "en": "`Group-Object` groups objects by a property and counts each group, like `sort | uniq -c` in bash. Among the 4625 events, which account has the most failures?",
@@ -489,7 +493,7 @@
       "level": 2,
       "topic": "pipes",
       "files": ["logs/sample_auth_logs.csv"],
-      "roadmap": ["ms"],
+      "roadmap": ["ms", "powershell"],
       "title": {"en": "Why does the service account fail?", "pt-BR": "Por que a conta de serviço falha?"},
       "question": {
         "en": "Look only at the 4625 events of `svc_backup`. The `failure_reason` column says why each logon failed. Which reason do they all have?",
@@ -512,7 +516,7 @@
       "level": 2,
       "topic": "windows",
       "files": ["logs/windows_security.xml"],
-      "roadmap": ["wcli", "ms"],
+      "roadmap": ["wcli", "ms", "powershell"],
       "title": {"en": "Open a Windows XML export", "pt-BR": "Abra um export XML do Windows"},
       "question": {
         "en": "`logs/windows_security.xml` is a Windows Security log exported as XML. PowerShell reads XML into objects: `$log = [xml](Get-Content logs/windows_security.xml -Raw)`. Then `$log.Events.Event` is the list of events. How many events are there?",
@@ -535,7 +539,7 @@
       "level": 3,
       "topic": "windows",
       "files": ["logs/windows_security.xml"],
-      "roadmap": ["ms"],
+      "roadmap": ["ms", "powershell", "logs"],
       "title": {"en": "Who unlocked the account?", "pt-BR": "Quem desbloqueou a conta?"},
       "question": {
         "en": "In the same XML, `j.smith` was locked out (event **4740**) and later unlocked (event **4767**). In 4767, `SubjectUserName` is the person who did the unlock. Who was it?",
@@ -558,7 +562,7 @@
       "level": 3,
       "topic": "investigation",
       "files": ["logs/sample_auth_logs.csv"],
-      "roadmap": ["ms", "redes"],
+      "roadmap": ["ms", "redes", "powershell"],
       "title": {"en": "A lockout from outside", "pt-BR": "Um bloqueio vindo de fora"},
       "question": {
         "en": "Back to the dataset. There are two account lockouts (event **4740**). One was caused from an external IP address (not `10.*`). Which account?",
@@ -581,7 +585,7 @@
       "level": 3,
       "topic": "investigation",
       "files": ["logs/sample_auth_logs.csv"],
-      "roadmap": ["ms"],
+      "roadmap": ["ms", "powershell"],
       "title": {"en": "Forgot the password?", "pt-BR": "Esqueceu a senha?"},
       "question": {
         "en": "The other lockout was `e.wilson`, on 12 October 2026. How many failed logons (4625) did `e.wilson` have that day?",
@@ -604,7 +608,7 @@
       "level": 3,
       "topic": "investigation",
       "files": ["logs/sample_auth_logs.csv"],
-      "roadmap": ["soc"],
+      "roadmap": ["soc", "powershell", "ir"],
       "title": {"en": "When did the attacker get in?", "pt-BR": "Quando o atacante entrou?"},
       "question": {
         "en": "The password spray from `203.0.113.88` found one valid password. Find the successful logon (4624) from that address. What is its `timestamp`? Copy it as it is in the file.",
@@ -627,7 +631,7 @@
       "level": 4,
       "topic": "evtx",
       "files": ["logs/windows_security.evtx"],
-      "roadmap": ["ms"],
+      "roadmap": ["ms", "powershell", "logs"],
       "title": {"en": "Get-WinEvent", "pt-BR": "Get-WinEvent"},
       "question": {
         "en": "On Windows, analysts read event logs with `Get-WinEvent`. Here it is a lab version that reads `.evtx` files, since live logs exist only on Windows. `Get-WinEvent -FilterHashtable @{ Path = \"$HOME/logs/windows_security.evtx\"; Id = 4625 }` filters by Event ID. How many 4625 events does the `.evtx` file have?",
@@ -650,7 +654,7 @@
       "level": 4,
       "topic": "evtx",
       "files": ["logs/windows_security.evtx"],
-      "roadmap": ["ms"],
+      "roadmap": ["ms", "powershell", "logs"],
       "title": {"en": "What time was the lockout?", "pt-BR": "A que horas foi o bloqueio?"},
       "question": {
         "en": "With `Get-WinEvent`, find the account lockout (4740) in the `.evtx` file. At what time did it happen? Answer as `HH:mm:ss` (the terminal's clock is UTC).",
@@ -673,7 +677,7 @@
       "level": 4,
       "topic": "json",
       "files": ["logs/entra_signins.json"],
-      "roadmap": ["ms", "cloud"],
+      "roadmap": ["ms", "cloud", "powershell", "ir"],
       "title": {"en": "Entra ID: who was compromised?", "pt-BR": "Entra ID: quem foi comprometido?"},
       "question": {
         "en": "`logs/entra_signins.json` has Microsoft Entra ID sign-ins. `ConvertFrom-Json` turns JSON into objects, like `jq`. The spray address `203.0.113.88` also hit Entra ID. Which account signed in **successfully** (`status.errorCode` 0) from it? Answer with the `userPrincipalName`.",
@@ -788,7 +792,7 @@
       "level": 2,
       "topic": "csv",
       "files": ["logs/sample_auth_logs.csv"],
-      "roadmap": ["wcli", "ms"],
+      "roadmap": ["wcli", "ms", "logs"],
       "title": {"en": "Lockouts in the CSV", "pt-BR": "Bloqueios no CSV"},
       "question": {
         "en": "In `logs\\sample_auth_logs.csv`, event **4740** is an account lockout. How many lockout rows are there? Search for `,4740,` with the commas, so the number cannot match inside another field.",
@@ -811,7 +815,7 @@
       "level": 3,
       "topic": "investigation",
       "files": ["logs/sample_auth_logs.csv"],
-      "roadmap": ["wcli", "soc"],
+      "roadmap": ["wcli", "soc", "siem"],
       "title": {"en": "Filter, then filter again", "pt-BR": "Filtre e filtre de novo"},
       "question": {
         "en": "Each `find` in a pipe narrows the lines down. How many **failed** logons (`FAILURE`) came from the password-spray address `203.0.113.88`?",
@@ -834,7 +838,7 @@
       "level": 3,
       "topic": "windows",
       "files": ["logs/windows_security.xml"],
-      "roadmap": ["wcli", "ms"],
+      "roadmap": ["wcli", "ms", "logs"],
       "title": {"en": "Every event of one user", "pt-BR": "Todos os eventos de um usuário"},
       "question": {
         "en": "`logs\\windows_security.xml` has one event per line. How many events mention the account `j.smith`? Search for `>j.smith<`, so the name must be the whole value of a field.",

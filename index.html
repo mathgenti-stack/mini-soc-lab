@@ -76,7 +76,7 @@
           requirements: ["pandas"],
           entrypoint: "streamlit_app.py",
           files: Object.fromEntries(paths.map((p) => [p, { url: "./" + p }])),
-          streamlitConfig: { "client.toolbarMode": "viewer" },
+          streamlitConfig: { "client.toolbarMode": "viewer", "theme.primaryColor": "#0f766e" },
           // Progress survives a reload: /mnt is kept in the browser (IndexedDB). estudar.html reads it from there.
           idbfsMountpoints: ["/mnt"],
           env: { SOC_LAB_ANSWERS_DIR: "/mnt/soclab" },
