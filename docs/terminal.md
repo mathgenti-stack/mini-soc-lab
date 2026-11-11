@@ -74,6 +74,8 @@ The terminal is at http://localhost:7681 (bash) and http://localhost:7681/?arg=p
 | `~/logs/windows_security.evtx` | `data/examples/windows_security.evtx` (the same events, binary) |
 | `~/logs/entra_signins.json` | `data/examples/entra_signins.json` |
 | `~/logs/sample_auth_logs.csv` | `data/sample_auth_logs.csv` (the two-week dataset) |
+| `~/logs/sysmon.json` | `data/examples/sysmon.json` (Sysmon events of `l.taylor`'s computer, 14 October) |
+| `~/logs/proxy.csv` | `data/examples/proxy.csv` (web proxy log, 14 October) |
 
 The files are mounted when the container starts, so the terminal always shows the current data.
 
@@ -113,7 +115,7 @@ Limits: the container can still reach the internet (publishing a port needs a ne
 
 ## The challenges
 
-There are 36 challenges: 14 for Linux, 14 for PowerShell and 8 for CMD.
+There are 44 challenges: 17 for Linux, 17 for PowerShell and 10 for CMD.
 
 **Linux**, in four levels: **basics** (`wc`, `head`), **searching and pipes** (`grep`, `awk`, `sort | uniq -c`), **investigation on the two-week dataset** (CSV columns with `awk -F,` and `cut`), and **other formats** (Entra ID JSON with `jq`, Windows XML). Each one follows a scenario the dashboard also detects: the SSH brute force, the password spray that found `l.taylor`, and `c.evans`'s unusual Remote Desktop logon (R006).
 
@@ -121,9 +123,11 @@ There are 36 challenges: 14 for Linux, 14 for PowerShell and 8 for CMD.
 
 **CMD**, in four levels: counting with `find /c` (and the `find /c /v ""` trick that counts lines), case with `/i`, several words at once with `findstr`, CSV values with their commas, chains of `find` as an AND, a user's events in the Windows XML, and cutting a line into words with `for /f`.
 
+**After the logon** (the last challenges of each shell): two days after the password spray, `l.taylor` opens an invoice on `LON-WS-006`. `logs/sysmon.json` (Sysmon events 1, 3, 11, 13 and 22) shows Word starting an encoded PowerShell, which downloads a DLL run by `rundll32.exe`; the DLL runs discovery commands, sets a Run key and zips a folder. `logs/proxy.csv` shows the download, a beacon every minute to `cdn-update.example.net` and a 46 MB upload to `files.example.org`. The challenges find the parent process, the child process, the commands the malware ran, the beacon, the volume sent and the blocked requests. Attacker domains use `example.net` and `example.org` (RFC 2606), like the IP addresses use the documentation ranges.
+
 ### The study pages (`estudar.html`)
 
-The course's explanations live next to the lab on the website, in `estudar.html` (in Portuguese): topics with an explanation, a checklist and a quiz, plus review tools (recap, flashcards, scenarios, diagrams, glossary). It is a single page with no server. Open it from the **Study** button in the dashboard's sidebar. Study and practice point to each other:
+The course's explanations live next to the lab on the website, in `estudar.html` (in Portuguese): topics with an explanation, a checklist and a quiz, plus review tools (recap, flashcards, scenarios, diagrams, glossary). The path has two phases: **phase 1, Service Desk / IT Support** (the foundation: computers, Windows, networks, command line, user support, troubleshooting, accounts and Microsoft 365) and **phase 2, SOC**. Phase 1 has its own practice, the **ticket queue** (*Fila de chamados*, menu *Chamados*): 14 fictional tickets worked in five steps (triage with impact × urgency, questions to the user, diagnosis in a terminal with ready-made outputs, the fix or escalation, and the ticket note, checked for key items). Tickets live in `curso/chamados.py`, the engine in `curso/chamados.js`; `python curso/montar.py` writes both into the page, and the build refuses a ticket whose model note fails its own check. A topic's *Praticar* step lists its lab challenges and its tickets. It is a single page with no server. Open it from the **Study** button in the dashboard's sidebar. Study and practice point to each other:
 
 - **From a challenge to the explanation.** Under the hints, each challenge shows *Stuck on the idea?*, with links to the topics that explain it (for example `linux-03` → Linux basics and Operating system security). The page opens directly on that topic (`estudar.html#linux`).
 - **From a topic to the challenges.** Each topic with exercises has a *Praticar* (practise) tab listing them, read from `challenges.json`. Each one opens the lab directly on that challenge with `?challenge=<id>`: the Terminal tab, the right shell and the challenge chosen. The link is read once and then removed from the address.

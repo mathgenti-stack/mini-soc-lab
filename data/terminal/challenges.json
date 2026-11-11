@@ -15,7 +15,9 @@
       "powershell": {"en": "PowerShell for analysis", "pt-BR": "PowerShell para Análise"},
       "logs": {"en": "Logs and events (Windows Event IDs, auth.log)", "pt-BR": "Logs e Eventos (Event IDs, auth.log)"},
       "siem": {"en": "SIEM and queries (filter, count, sort)", "pt-BR": "SIEM e Consultas (filtrar, contar, ordenar)"},
-      "ir": {"en": "Alert triage and incident response", "pt-BR": "Triagem e Resposta a Incidentes"}
+      "ir": {"en": "Alert triage and incident response", "pt-BR": "Triagem e Resposta a Incidentes"},
+      "sysmon": {"en": "Sysmon and EDR", "pt-BR": "Sysmon e EDR"},
+      "cti": {"en": "Threat intel and MITRE ATT&CK", "pt-BR": "Threat Intel e MITRE ATT&CK"}
     }
   },
   "environments": {
@@ -26,7 +28,9 @@
         "logs/windows_security.xml": "data/examples/windows_security.xml",
         "logs/windows_security.evtx": "data/examples/windows_security.evtx",
         "logs/entra_signins.json": "data/examples/entra_signins.json",
-        "logs/sample_auth_logs.csv": "data/sample_auth_logs.csv"
+        "logs/sample_auth_logs.csv": "data/sample_auth_logs.csv",
+        "logs/sysmon.json": "data/examples/sysmon.json",
+        "logs/proxy.csv": "data/examples/proxy.csv"
       }
     },
     "powershell": {
@@ -36,7 +40,9 @@
         "logs/windows_security.xml": "data/examples/windows_security.xml",
         "logs/windows_security.evtx": "data/examples/windows_security.evtx",
         "logs/entra_signins.json": "data/examples/entra_signins.json",
-        "logs/sample_auth_logs.csv": "data/sample_auth_logs.csv"
+        "logs/sample_auth_logs.csv": "data/sample_auth_logs.csv",
+        "logs/sysmon.json": "data/examples/sysmon.json",
+        "logs/proxy.csv": "data/examples/proxy.csv"
       }
     },
     "cmd": {
@@ -46,7 +52,9 @@
         "logs/windows_security.xml": "data/examples/windows_security.xml",
         "logs/windows_security.evtx": "data/examples/windows_security.evtx",
         "logs/entra_signins.json": "data/examples/entra_signins.json",
-        "logs/sample_auth_logs.csv": "data/sample_auth_logs.csv"
+        "logs/sample_auth_logs.csv": "data/sample_auth_logs.csv",
+        "logs/sysmon.json": "data/examples/sysmon.json",
+        "logs/proxy.csv": "data/examples/proxy.csv"
       }
     }
   },
@@ -373,11 +381,80 @@
       }
     },
     {
+      "id": "linux-15",
+      "environments": ["linux"],
+      "level": 4,
+      "topic": "json",
+      "files": ["logs/sysmon.json"],
+      "roadmap": ["linux", "sysmon", "ir"],
+      "title": {"en": "Sysmon: who started PowerShell?", "pt-BR": "Sysmon: quem abriu o PowerShell?"},
+      "question": {
+        "en": "Two days after the password spray, `l.taylor` (computer `LON-WS-006`, address `10.10.1.16`) opened an invoice that came by e-mail. `logs/sysmon.json` has the Sysmon events of that computer. Event ID 1 is a new process, with `Image` (the program) and `ParentImage` (who started it). Which program started `powershell.exe` for the first time? Answer with the program name.",
+        "pt-BR": "Dois dias depois do password spray, `l.taylor` (computador `LON-WS-006`, endereço `10.10.1.16`) abriu uma fatura que chegou por e-mail. `logs/sysmon.json` tem os eventos Sysmon desse computador. O Event ID 1 é um processo novo, com `Image` (o programa) e `ParentImage` (quem o abriu). Qual programa abriu o `powershell.exe` pela primeira vez? Responda com o nome do programa."
+      },
+      "hints": [
+        {"en": "The file is a JSON list: `jq '.[0]' logs/sysmon.json` shows the first event.", "pt-BR": "O arquivo é uma lista JSON: `jq '.[0]' logs/sysmon.json` mostra o primeiro evento."},
+        {"en": "`select(.EventID == 1 and (.Image | endswith(\"powershell.exe\")))` keeps the PowerShell processes; then print `.ParentImage`.", "pt-BR": "`select(.EventID == 1 and (.Image | endswith(\"powershell.exe\")))` fica com os processos do PowerShell; depois mostre `.ParentImage`."}
+      ],
+      "answers": ["C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE", "WINWORD.EXE", "WINWORD", "Word", "Microsoft Word"],
+      "solution": "jq -r '.[] | select(.EventID == 1 and (.Image | endswith(\"powershell.exe\"))) | .ParentImage' logs/sysmon.json | head -1",
+      "explanation": {
+        "en": "Word starting PowerShell is the classic sign of a malicious macro (MITRE T1566.001 followed by T1059.001): Word has no reason to open a command shell. Look at that PowerShell command line too: `-nop -w hidden -enc` means no profile, hidden window and an encoded command.",
+        "pt-BR": "Word abrindo PowerShell é o sinal clássico de macro maliciosa (MITRE T1566.001 seguido de T1059.001): o Word não tem motivo para abrir um shell de comandos. Veja também a linha de comando desse PowerShell: `-nop -w hidden -enc` quer dizer sem perfil, janela escondida e comando codificado."
+      }
+    },
+    {
+      "id": "linux-16",
+      "environments": ["linux"],
+      "level": 4,
+      "topic": "investigation",
+      "files": ["logs/proxy.csv"],
+      "roadmap": ["linux", "cti", "siem"],
+      "title": {"en": "Proxy: the beacon", "pt-BR": "Proxy: o beacon"},
+      "question": {
+        "en": "Two days after the password spray, `l.taylor` (computer `LON-WS-006`, address `10.10.1.16`) opened an invoice that came by e-mail. `logs/proxy.csv` is the web proxy log (column 2 `client_ip`, column 6 `host`). Malware usually \"calls home\" at regular intervals: a beacon. How many requests did `10.10.1.16` make to its most requested destination? Answer with the number only.",
+        "pt-BR": "Dois dias depois do password spray, `l.taylor` (computador `LON-WS-006`, endereço `10.10.1.16`) abriu uma fatura que chegou por e-mail. `logs/proxy.csv` é o log do proxy web (coluna 2 `client_ip`, coluna 6 `host`). Malware costuma \"ligar para casa\" em intervalos regulares: um beacon. Quantas requisições o `10.10.1.16` fez para o destino que ele mais acessou? Responda só o número."
+      },
+      "hints": [
+        {"en": "`awk -F, '$2==\"10.10.1.16\" {print $6}' logs/proxy.csv` lists the destinations of that computer.", "pt-BR": "`awk -F, '$2==\"10.10.1.16\" {print $6}' logs/proxy.csv` lista os destinos desse computador."},
+        {"en": "Then count and sort: `| sort | uniq -c | sort -rn | head -1`.", "pt-BR": "Depois conte e ordene: `| sort | uniq -c | sort -rn | head -1`."}
+      ],
+      "answers": ["33"],
+      "solution": "awk -F, '$2==\"10.10.1.16\" {print $6}' logs/proxy.csv | sort | uniq -c | sort -rn | head -1 | awk '{print $1}'",
+      "explanation": {
+        "en": "33 requests to `cdn-update.example.net`, a domain nobody else uses: 2 downloads (`s.ps1` and `updater.dll`) and 31 POSTs to `/api/v2/check`, one per minute. A regular rhythm to an unknown, uncategorised domain is beaconing to a command-and-control server (MITRE T1071.001).",
+        "pt-BR": "33 requisições para `cdn-update.example.net`, um domínio que ninguém mais usa: 2 downloads (`s.ps1` e `updater.dll`) e 31 POSTs em `/api/v2/check`, um por minuto. Um ritmo regular para um domínio desconhecido e sem categoria é beaconing para um servidor de comando e controle (MITRE T1071.001)."
+      }
+    },
+    {
+      "id": "linux-17",
+      "environments": ["linux"],
+      "level": 4,
+      "topic": "investigation",
+      "files": ["logs/proxy.csv"],
+      "roadmap": ["linux", "cti", "ir"],
+      "title": {"en": "Proxy: how much left?", "pt-BR": "Proxy: quanto saiu?"},
+      "question": {
+        "en": "Two days after the password spray, `l.taylor` (computer `LON-WS-006`, address `10.10.1.16`) opened an invoice that came by e-mail. At 09:33 the computer sent something to a file-sharing site, `files.example.org`. Column 8 of `logs/proxy.csv` is `bytes_out` (bytes sent). How many bytes were sent to that site? Answer with the number only.",
+        "pt-BR": "Dois dias depois do password spray, `l.taylor` (computador `LON-WS-006`, endereço `10.10.1.16`) abriu uma fatura que chegou por e-mail. Às 09:33 o computador enviou algo para um site de compartilhamento de arquivos, `files.example.org`. A coluna 8 de `logs/proxy.csv` é `bytes_out` (bytes enviados). Quantos bytes foram enviados para esse site? Responda só o número."
+      },
+      "hints": [
+        {"en": "Compare column 6 (`host`) with `awk -F, '$6==\"files.example.org\"'`.", "pt-BR": "Compare a coluna 6 (`host`) com `awk -F, '$6==\"files.example.org\"'`."},
+        {"en": "Print only column 8: `{print $8}`.", "pt-BR": "Mostre só a coluna 8: `{print $8}`."}
+      ],
+      "answers": ["48234496"],
+      "solution": "awk -F, '$6==\"files.example.org\" {print $8}' logs/proxy.csv",
+      "explanation": {
+        "en": "About 46 MB uploaded, two minutes after Sysmon shows PowerShell zipping the `Contratos` folder into `C:\\Users\\Public\\d.zip`. That is data exfiltration (MITRE T1567). Uploads are normally small; a big `bytes_out` to a file-sharing site from a compromised machine is a data-breach question for the incident response team.",
+        "pt-BR": "Cerca de 46 MB enviados, dois minutos depois de o Sysmon mostrar o PowerShell compactando a pasta `Contratos` em `C:\\Users\\Public\\d.zip`. Isso é exfiltração de dados (MITRE T1567). Envios costumam ser pequenos; um `bytes_out` grande para um site de compartilhamento, saindo de uma máquina comprometida, vira um caso de vazamento de dados para a resposta a incidentes."
+      }
+    },
+    {
       "id": "ps-01",
       "environments": ["powershell"],
       "level": 1,
       "topic": "basics",
-      "files": ["logs/linux_auth.log", "logs/windows_security.xml", "logs/windows_security.evtx", "logs/entra_signins.json", "logs/sample_auth_logs.csv"],
+      "files": ["logs/linux_auth.log", "logs/windows_security.xml", "logs/windows_security.evtx", "logs/entra_signins.json", "logs/sample_auth_logs.csv", "logs/sysmon.json", "logs/proxy.csv"],
       "roadmap": ["wcli", "powershell"],
       "title": {"en": "What is in the logs folder?", "pt-BR": "O que tem na pasta de logs?"},
       "question": {
@@ -388,7 +465,7 @@
         {"en": "Put the command in parentheses and read its `.Count` property.", "pt-BR": "Coloque o comando entre parênteses e leia a propriedade `.Count`."},
         {"en": "`Measure-Object` also counts any list: `Get-ChildItem logs | Measure-Object`.", "pt-BR": "O `Measure-Object` também conta qualquer lista: `Get-ChildItem logs | Measure-Object`."}
       ],
-      "answers": ["5"],
+      "answers": ["7"],
       "solution": "(Get-ChildItem logs).Count",
       "explanation": {
         "en": "`(...)` runs the command first and gives you the result as a list of objects; `.Count` is how many there are. The same pattern counts anything: users, events, failed logons. This is the big difference from bash: there you count lines of text (`wc -l`), here you count objects.",
@@ -695,11 +772,80 @@
       }
     },
     {
+      "id": "ps-15",
+      "environments": ["powershell"],
+      "level": 4,
+      "topic": "json",
+      "files": ["logs/sysmon.json"],
+      "roadmap": ["powershell", "sysmon", "ir"],
+      "title": {"en": "Sysmon: what did PowerShell start?", "pt-BR": "Sysmon: o que o PowerShell abriu?"},
+      "question": {
+        "en": "Two days after the password spray, `l.taylor` (computer `LON-WS-006`, address `10.10.1.16`) opened an invoice that came by e-mail. `logs/sysmon.json` has the Sysmon events of that computer. In Event ID 1 (new process), `ParentImage` is who started the program in `Image`. Which program did `powershell.exe` start? Answer with the program name.",
+        "pt-BR": "Dois dias depois do password spray, `l.taylor` (computador `LON-WS-006`, endereço `10.10.1.16`) abriu uma fatura que chegou por e-mail. `logs/sysmon.json` tem os eventos Sysmon desse computador. No Event ID 1 (processo novo), `ParentImage` é quem abriu o programa de `Image`. Qual programa o `powershell.exe` abriu? Responda com o nome do programa."
+      },
+      "hints": [
+        {"en": "`$ev = Get-Content logs/sysmon.json -Raw | ConvertFrom-Json` loads the events as objects.", "pt-BR": "`$ev = Get-Content logs/sysmon.json -Raw | ConvertFrom-Json` carrega os eventos como objetos."},
+        {"en": "Filter with `Where-Object { $_.EventID -eq 1 -and $_.ParentImage -like '*powershell.exe' }` and show `Image`.", "pt-BR": "Filtre com `Where-Object { $_.EventID -eq 1 -and $_.ParentImage -like '*powershell.exe' }` e mostre `Image`."}
+      ],
+      "answers": ["C:\\Windows\\System32\\rundll32.exe", "rundll32.exe", "rundll32"],
+      "solution": "$ev = Get-Content logs/sysmon.json -Raw | ConvertFrom-Json; $ev | Where-Object { $_.EventID -eq 1 -and $_.ParentImage -like '*powershell.exe' } | Select-Object -ExpandProperty Image",
+      "explanation": {
+        "en": "`rundll32.exe` is a legitimate Windows program (a LOLBin) that runs code from a DLL. Here it runs `updater.dll`, which PowerShell had just downloaded into AppData (Sysmon event 11). The name is innocent; the parent (PowerShell from Word) and the DLL path give it away (MITRE T1218.011).",
+        "pt-BR": "O `rundll32.exe` é um programa legítimo do Windows (um LOLBin) que executa código de uma DLL. Aqui ele roda a `updater.dll`, que o PowerShell tinha acabado de baixar no AppData (evento Sysmon 11). O nome é inocente; o pai (PowerShell vindo do Word) e o caminho da DLL entregam o ataque (MITRE T1218.011)."
+      }
+    },
+    {
+      "id": "ps-16",
+      "environments": ["powershell"],
+      "level": 4,
+      "topic": "investigation",
+      "files": ["logs/proxy.csv"],
+      "roadmap": ["powershell", "cti", "siem"],
+      "title": {"en": "Proxy: where does it call home?", "pt-BR": "Proxy: para onde ele liga?"},
+      "question": {
+        "en": "Two days after the password spray, `l.taylor` (computer `LON-WS-006`, address `10.10.1.16`) opened an invoice that came by e-mail. `logs/proxy.csv` is the web proxy log. Which destination (`host`) received the most requests from `10.10.1.16`? Answer with the host name.",
+        "pt-BR": "Dois dias depois do password spray, `l.taylor` (computador `LON-WS-006`, endereço `10.10.1.16`) abriu uma fatura que chegou por e-mail. `logs/proxy.csv` é o log do proxy web. Qual destino (`host`) recebeu mais requisições do `10.10.1.16`? Responda com o nome do host."
+      },
+      "hints": [
+        {"en": "`Import-Csv logs/proxy.csv | Where-Object client_ip -eq '10.10.1.16'` keeps that computer's requests.", "pt-BR": "`Import-Csv logs/proxy.csv | Where-Object client_ip -eq '10.10.1.16'` fica com as requisições desse computador."},
+        {"en": "`Group-Object host | Sort-Object Count -Descending` puts the busiest destination first.", "pt-BR": "`Group-Object host | Sort-Object Count -Descending` coloca o destino mais acessado primeiro."}
+      ],
+      "answers": ["cdn-update.example.net"],
+      "solution": "Import-Csv logs/proxy.csv | Where-Object client_ip -eq '10.10.1.16' | Group-Object host | Sort-Object Count -Descending | Select-Object -First 1 -ExpandProperty Name",
+      "explanation": {
+        "en": "More requests than Outlook, Teams or SharePoint, to a domain no other employee uses, with category `Uncategorized`: that is the command-and-control server. It is also an IOC: search it in the SIEM for other computers and block it on the proxy (after checking it is not a shared service).",
+        "pt-BR": "Mais requisições do que Outlook, Teams ou SharePoint, para um domínio que nenhum outro funcionário usa, com categoria `Uncategorized`: é o servidor de comando e controle. Também é um IOC: procure no SIEM se outros computadores falaram com ele e bloqueie no proxy (depois de confirmar que não é um serviço compartilhado)."
+      }
+    },
+    {
+      "id": "ps-17",
+      "environments": ["powershell"],
+      "level": 4,
+      "topic": "json",
+      "files": ["logs/sysmon.json"],
+      "roadmap": ["powershell", "sysmon", "cti"],
+      "title": {"en": "Sysmon: what did the malware do?", "pt-BR": "Sysmon: o que o malware fez?"},
+      "question": {
+        "en": "Two days after the password spray, `l.taylor` (computer `LON-WS-006`, address `10.10.1.16`) opened an invoice that came by e-mail. After it started, the malware (`rundll32.exe`) ran commands of its own. How many processes did `rundll32.exe` start (Event ID 1 with `ParentImage` ending in `rundll32.exe`)? Answer with the number only.",
+        "pt-BR": "Dois dias depois do password spray, `l.taylor` (computador `LON-WS-006`, endereço `10.10.1.16`) abriu uma fatura que chegou por e-mail. Depois de iniciar, o malware (`rundll32.exe`) rodou comandos por conta própria. Quantos processos o `rundll32.exe` abriu (Event ID 1 com `ParentImage` terminando em `rundll32.exe`)? Responda só o número."
+      },
+      "hints": [
+        {"en": "Load the events with `ConvertFrom-Json` and filter with `-like '*rundll32.exe'` on `ParentImage`.", "pt-BR": "Carregue os eventos com `ConvertFrom-Json` e filtre com `-like '*rundll32.exe'` no `ParentImage`."},
+        {"en": "Put the pipeline in parentheses and read `.Count`.", "pt-BR": "Coloque o pipeline entre parênteses e leia `.Count`."}
+      ],
+      "answers": ["4"],
+      "solution": "$ev = Get-Content logs/sysmon.json -Raw | ConvertFrom-Json; ($ev | Where-Object { $_.EventID -eq 1 -and $_.ParentImage -like '*rundll32.exe' }).Count",
+      "explanation": {
+        "en": "Three `cmd.exe` for discovery (`whoami /all`, `net group \"domain admins\" /domain`, `nltest /dclist`: MITRE T1033, T1069, T1018) and one PowerShell that zips the `Contratos` folder before the upload. A DLL started by rundll32 should not start command shells. Next steps: isolate LON-WS-006, reset `l.taylor`, and look for the Run key `OneDriveUpdate` (event 13) and the same hash on other computers.",
+        "pt-BR": "Três `cmd.exe` de reconhecimento (`whoami /all`, `net group \"domain admins\" /domain`, `nltest /dclist`: MITRE T1033, T1069, T1018) e um PowerShell que compacta a pasta `Contratos` antes do envio. Uma DLL aberta pelo rundll32 não deveria abrir shells de comando. Próximos passos: isolar o LON-WS-006, redefinir a senha de `l.taylor` e procurar a chave Run `OneDriveUpdate` (evento 13) e o mesmo hash em outros computadores."
+      }
+    },
+    {
       "id": "cmd-01",
       "environments": ["cmd"],
       "level": 1,
       "topic": "basics",
-      "files": ["logs/linux_auth.log", "logs/windows_security.xml", "logs/windows_security.evtx", "logs/entra_signins.json", "logs/sample_auth_logs.csv"],
+      "files": ["logs/linux_auth.log", "logs/windows_security.xml", "logs/windows_security.evtx", "logs/entra_signins.json", "logs/sample_auth_logs.csv", "logs/sysmon.json", "logs/proxy.csv"],
       "roadmap": ["wcli"],
       "title": {"en": "Count the files", "pt-BR": "Conte os arquivos"},
       "question": {
@@ -710,7 +856,7 @@
         {"en": "The summary at the end of `dir` says how many *File(s)* there are.", "pt-BR": "O resumo no fim do `dir` diz quantos *File(s)* existem."},
         {"en": "To get only the number: `dir /b logs` lists bare names, one per line, and `find /c /v \"\"` counts lines.", "pt-BR": "Para ter só o número: `dir /b logs` lista só os nomes, um por linha, e `find /c /v \"\"` conta as linhas."}
       ],
-      "answers": ["5"],
+      "answers": ["7"],
       "solution": "dir /b logs | find /c /v \"\"",
       "explanation": {
         "en": "`find /c /v \"\"` is the CMD version of `wc -l`: `/v` keeps lines that do NOT contain the text, and since an empty text matches no line, every line is kept and counted. You will see this trick in many Windows scripts.",
@@ -876,6 +1022,52 @@
       "explanation": {
         "en": "`for /f` is CMD's `awk '{print $9}'`: `tokens=` chooses the words and `delims=` the separators (`delims=,` for a CSV). Three failures for `m.jones` from 198.51.100.23 just before this success, then `sudo`: check whether it was really the user.",
         "pt-BR": "O `for /f` é o `awk '{print $9}'` do CMD: o `tokens=` escolhe as palavras e o `delims=` os separadores (`delims=,` para um CSV). Três falhas de `m.jones` vindas de 198.51.100.23 logo antes deste sucesso, e depois um `sudo`: confira se foi mesmo o usuário."
+      }
+    },
+    {
+      "id": "cmd-09",
+      "environments": ["cmd"],
+      "level": 4,
+      "topic": "find",
+      "files": ["logs/proxy.csv"],
+      "roadmap": ["wcli", "cti"],
+      "title": {"en": "Proxy: the unknown domain", "pt-BR": "Proxy: o domínio desconhecido"},
+      "question": {
+        "en": "Two days after the password spray, `l.taylor` (computer `LON-WS-006`, address `10.10.1.16`) opened an invoice that came by e-mail. Threat intel reported the domain `cdn-update.example.net` as malicious. How many lines of `logs\\proxy.csv` mention it? Answer with the number only.",
+        "pt-BR": "Dois dias depois do password spray, `l.taylor` (computador `LON-WS-006`, endereço `10.10.1.16`) abriu uma fatura que chegou por e-mail. A threat intel informou que o domínio `cdn-update.example.net` é malicioso. Quantas linhas de `logs\\proxy.csv` falam dele? Responda só o número."
+      },
+      "hints": [
+        {"en": "`find \"text\"` shows the lines with the text; `type file | find ...` reads the file.", "pt-BR": "`find \"texto\"` mostra as linhas com o texto; `type arquivo | find ...` lê o arquivo."},
+        {"en": "`find /c` counts the lines instead of showing them.", "pt-BR": "`find /c` conta as linhas em vez de mostrá-las."}
+      ],
+      "answers": ["33"],
+      "solution": "type logs\\proxy.csv | find /c \"cdn-update.example.net\"",
+      "explanation": {
+        "en": "Searching a reported IOC in your own logs is called a retro-hunt. 33 hits from one computer only: the alert is a true positive and the scope (for now) is one machine. Next: search the other log sources (DNS, firewall, EDR) for the same domain.",
+        "pt-BR": "Procurar nos seus logs um IOC que alguém reportou se chama retro-hunt. 33 ocorrências, de um computador só: o alerta é verdadeiro positivo e o escopo (por enquanto) é uma máquina. Próximo passo: procurar o mesmo domínio nas outras fontes (DNS, firewall, EDR)."
+      }
+    },
+    {
+      "id": "cmd-10",
+      "environments": ["cmd"],
+      "level": 4,
+      "topic": "find",
+      "files": ["logs/proxy.csv"],
+      "roadmap": ["wcli", "siem"],
+      "title": {"en": "Proxy: what was blocked?", "pt-BR": "Proxy: o que foi bloqueado?"},
+      "question": {
+        "en": "`logs\\proxy.csv` is the web proxy log. Column 11 (`action`) says whether the proxy `allowed` or `blocked` the request. How many requests were blocked? Answer with the number only.",
+        "pt-BR": "`logs\\proxy.csv` é o log do proxy web. A coluna 11 (`action`) diz se o proxy deixou passar (`allowed`) ou bloqueou (`blocked`) a requisição. Quantas requisições foram bloqueadas? Responda só o número."
+      },
+      "hints": [
+        {"en": "Search for the word between commas so it only matches the column: `\",blocked,\"`.", "pt-BR": "Procure a palavra entre vírgulas, para bater só com a coluna: `\",blocked,\"`."},
+        {"en": "`type logs\\proxy.csv | find /c \",blocked,\"`", "pt-BR": "`type logs\\proxy.csv | find /c \",blocked,\"`"}
+      ],
+      "answers": ["2"],
+      "solution": "type logs\\proxy.csv | find /c \",blocked,\"",
+      "explanation": {
+        "en": "Two gambling sites, blocked by the category policy: policy violations, not attacks. The interesting part is the opposite: the malware's domain was `allowed`, because it was new and uncategorised. A proxy only blocks what it already knows, which is why the analyst still has to look at allowed traffic.",
+        "pt-BR": "Dois sites de apostas, bloqueados pela política de categorias: violação de política, não ataque. O interessante é o contrário: o domínio do malware foi `allowed`, porque era novo e sem categoria. O proxy só bloqueia o que já conhece; por isso o analista ainda precisa olhar o tráfego permitido."
       }
     }
   ]

@@ -39,7 +39,8 @@ def test_new_topics_follow_the_course_template():
     topics = load("topicos_novos")
     quiz = load("quiz_novo")
     for t in topics.NEW_TOPICS:
-        for section in ("No dia a dia de um SOC", "Erros comuns", "Como explicar numa entrevista"):
+        assert "No dia a dia de um SOC" in t["st"] or "No dia a dia de um Service Desk" in t["st"], t["id"]
+        for section in ("Erros comuns", "Como explicar numa entrevista"):
             assert section in t["st"], (t["id"], section)
         assert 6 <= len(t["chk"]) <= 9, t["id"]
         assert sum(q[0] in t["tags"] for q in quiz.Q) >= 10, t["id"]
@@ -62,3 +63,26 @@ def test_learner_path_pieces_are_wired():
     for code in ("function trilha()", "function nextStep(t)", "function openTopic(t,tab)", 'class="steps"',
                  "function welcome()", 'id="hcont"', 'id="qback"'):
         assert code in PAGE, code
+
+
+def test_ticket_queue_is_wired():
+    """The Service Desk ticket queue (menu Chamados): view, menu button, tickets and the practice step of topics."""
+    chamados = load("chamados")
+    for code in ('<button data-t="9">', '<div id="v9" class="hide">', "if(n==9)rSd();", "function rSd()",
+                 "function tkStart(t)", "lc=pratCount(t)", "FILA[t.id]?sdPrat(t)", '{id:"sd",ic:"🎧"'):
+        assert code in PAGE, code
+    assert len(chamados.TICKETS) >= 12
+    assert {1, 2, 3} == {t["nivel"] for t in chamados.TICKETS}
+    # every Service Desk topic has tickets to practise
+    for topic in ("sd", "atend", "trouble", "contas"):
+        assert any(topic in t["topicos"] for t in chamados.TICKETS), topic
+
+
+def test_path_has_two_phases():
+    topics = load("topicos_novos")
+    phases = [m for m in topics.TRILHA if m.get("f")]
+    assert [m["f"].split(" ·")[0] for m in phases] == ["Fase 1", "Fase 2"]
+    assert topics.TRILHA[0] is phases[0]
+    first = [i for m in topics.TRILHA[:topics.TRILHA.index(phases[1])] for i in m["ids"]]
+    assert {"sd", "atend", "trouble", "contas"} <= set(first) and "soc" not in first
+

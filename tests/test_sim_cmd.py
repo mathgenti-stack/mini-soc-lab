@@ -42,7 +42,7 @@ def test_paths_prompt_and_navigation(cmd):
     run(cmd, "cd ..")
     assert run(cmd, "type C:\\Users\\analyst\\logs\\linux_auth.log | find /c \"sudo\"") == ("1\n", "")
     output, _ = run(cmd, "dir logs")
-    assert " Directory of C:\\Users\\analyst\\logs" in output and "5 File(s)" in output and "95,571" in output
+    assert " Directory of C:\\Users\\analyst\\logs" in output and "7 File(s)" in output and "239,900" in output
 
 
 @pytest.mark.parametrize("line, expected", [

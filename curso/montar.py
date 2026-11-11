@@ -1,4 +1,4 @@
-"""Grava os tópicos novos, as perguntas de quiz e a trilha do curso em estudar.html.
+"""Grava os tópicos novos, as perguntas de quiz, a trilha e a Fila de chamados do curso em estudar.html.
 
 Uso (na pasta do projeto):  python curso/montar.py
 Pode rodar quantas vezes quiser: o que foi gravado antes, entre as marcas /* >>> curso */ e /* <<< curso */,
@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from chamados import CATEGORIAS, TICKETS, TIPOS  # noqa: E402
 from quiz_novo import Q  # noqa: E402
 from topicos_novos import NEW_TOPICS, RESUMOS, TRILHA  # noqa: E402
 
@@ -53,6 +54,28 @@ def check(topics, questions, trilha):
         assert m["n"] and m["ids"], m
 
 
+def check_tickets(tickets, topic_ids):
+    """Os chamados da Fila: campos completos, alternativas válidas e a nota modelo passando na própria correção."""
+    ids = [t["id"] for t in tickets]
+    assert len(ids) == len(set(ids)), "chamado repetido"
+    for t in tickets:
+        tid = t["id"]
+        assert t["nivel"] in (1, 2, 3) and t["titulo"] and t["msg"] and t["quem"], tid
+        assert set(t["topicos"]) <= topic_ids, (tid, set(t["topicos"]) - topic_ids)
+        tri = t["triagem"]
+        assert tri["tipo"] in TIPOS and set([tri["cat"]] if isinstance(tri["cat"], str) else tri["cat"]) <= set(CATEGORIAS), tid
+        assert tri["impacto"] in (1, 2, 3) and tri["urgencia"] in (1, 2, 3) and tri["porque"], tid
+        ok = [q for q in t["perguntas"] if q["ok"]]
+        assert len(t["perguntas"]) == 6 and len(ok) >= 3 and all(q["p"] and q["r"] and q["porque"] for q in t["perguntas"]), tid
+        cmds = t["terminal"]["cmds"]
+        assert cmds and all(c["c"] and c["out"] for c in cmds) and t["terminal"]["onde"] and t["terminal"]["dica"], tid
+        for k in ("diag", "acao"):
+            assert len(t[k]["ops"]) == 4 and len(set(t[k]["ops"])) == 4 and t[k]["porque"], (tid, k)
+        model = t["nota"]["modelo"].lower()
+        for name, rx in t["nota"]["itens"]:
+            assert re.search(rx, model), (tid, "a nota modelo não passa no item", name)
+
+
 def build(html):
     check(NEW_TOPICS, Q, TRILHA)
     existing = set(re.findall(r'^\{id:"([\w-]+)"', html[slice(*array_bounds(html, "TOP"))], re.M))
@@ -88,6 +111,19 @@ def build(html):
         html = html[:a] + html[html.index(END, a) + len(END) + 1:]
     rc = mark + js(RESUMOS) + ");\n" + END + "\n"
     html = html.replace("\nfunction dkey(", "\n" + rc + "function dkey(", 1)
+    # the ticket queue (Fila de chamados): the tickets as JSON and the engine (curso/chamados.js),
+    # right before the page starts up
+    check_tickets(TICKETS, all_ids)
+    engine = (Path(__file__).resolve().parent / "chamados.js").read_text(encoding="utf-8").strip()
+    fmark = BEGIN + "\nconst TK_TIPOS="
+    if fmark in html:
+        a = html.index(fmark)
+        html = html[:a] + html[html.index(END, a) + len(END) + 1:]
+    init = '\nrC();rT();$("s2")'
+    assert html.count(init) == 1
+    block = (fmark + js(TIPOS) + ";\nconst TK_CATS=" + js(CATEGORIAS) + ";\nconst TK=" + js(TICKETS) + ";\n"
+             + engine + "\n" + END)
+    html = html.replace(init, "\n" + block + init, 1)
     start = html.index("\nconst MODS=[\n") + 1
     end = html.index("\n];", start) + 3
     mods = "const MODS=[\n" + ",\n".join(js(m) for m in TRILHA) + "\n];"
@@ -99,4 +135,4 @@ if __name__ == "__main__":
     html = PAGE.read_text(encoding="utf-8")
     new = build(html)
     PAGE.write_text(new, encoding="utf-8", newline="\n")
-    print(f"ok: {len(NEW_TOPICS)} tópicos, {len(Q)} perguntas, {len(TRILHA)} módulos na trilha")
+    print(f"ok: {len(NEW_TOPICS)} tópicos, {len(Q)} perguntas, {len(TRILHA)} módulos na trilha, {len(TICKETS)} chamados")

@@ -57,7 +57,19 @@ EXPECTED = {
     "linux-13": lambda: str(sum(s["status"]["errorCode"] == 50126 for s in json.loads(
         (ROOT / "data/examples/entra_signins.json").read_text(encoding="utf-8"))["value"])),
     "linux-14": lambda: str(sum("<EventID>4625</EventID>" in line for line in _lines("data/examples/windows_security.xml"))),
+    "linux-15": lambda: next(e["ParentImage"] for e in _sysmon() if e["EventID"] == 1 and e["Image"].endswith("powershell.exe")),
+    "linux-16": lambda: str(Counter(r["host"] for r in _proxy_rows() if r["client_ip"] == "10.10.1.16").most_common(1)[0][1]),
+    "linux-17": lambda: next(r["bytes_out"] for r in _proxy_rows() if r["host"] == "files.example.org"),
 }
+
+
+def _sysmon():
+    return json.loads((ROOT / "data/examples/sysmon.json").read_text(encoding="utf-8"))
+
+
+def _proxy_rows():
+    with open(ROOT / "data/examples/proxy.csv", encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
 
 
 def _windows_xml():
@@ -102,6 +114,9 @@ POWERSHELL_EXPECTED = {
     "ps-14": lambda: next(s["userPrincipalName"] for s in json.loads(
         (ROOT / "data/examples/entra_signins.json").read_text(encoding="utf-8"))["value"]
         if s["ipAddress"] == "203.0.113.88" and s["status"]["errorCode"] == 0),
+    "ps-15": lambda: next(e["Image"] for e in _sysmon() if e["EventID"] == 1 and e["ParentImage"].endswith("powershell.exe")),
+    "ps-16": lambda: Counter(r["host"] for r in _proxy_rows() if r["client_ip"] == "10.10.1.16").most_common(1)[0][0],
+    "ps-17": lambda: str(sum(e["EventID"] == 1 and e["ParentImage"].endswith("rundll32.exe") for e in _sysmon())),
 }
 CMD_EXPECTED = {
     "cmd-01": lambda: str(len(load_challenges().files("cmd"))),
@@ -112,6 +127,8 @@ CMD_EXPECTED = {
     "cmd-06": lambda: str(sum(r["source_ip"] == "203.0.113.88" and r["result"] == "FAILURE" for r in _csv_rows())),
     "cmd-07": lambda: str(sum(any(d.text == "j.smith" for d in e.iter(f"{NS}Data")) for e in _windows_xml())),
     "cmd-08": lambda: next(line.split()[8] for line in _lines(AUTH) if "Accepted password" in line),
+    "cmd-09": lambda: str(sum("cdn-update.example.net" in line for line in _lines("data/examples/proxy.csv"))),
+    "cmd-10": lambda: str(sum(r["action"] == "blocked" for r in _proxy_rows())),
 }
 ALL_EXPECTED = {**EXPECTED, **POWERSHELL_EXPECTED, **CMD_EXPECTED}
 BY_ENVIRONMENT = {"linux": EXPECTED, "powershell": POWERSHELL_EXPECTED, "cmd": CMD_EXPECTED}

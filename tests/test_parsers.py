@@ -208,7 +208,8 @@ def test_example_files_are_fictional():
         addresses = {ipaddress.ip_address(ip) for ip in re.findall(r"\b\d{1,3}(?:\.\d{1,3}){3}\b", text)}
         assert addresses and all(any(ip in net for net in allowed) for ip in addresses), path.name
         domains = set(re.findall(r"\w@([\w.-]+)", text)) | set(re.findall(r"\.(example\.\w+)", text))
-        assert domains <= {"example.com", "example.local"}, (path.name, domains)
+        # RFC 2606 names only: the company is example.com / example.local; attackers use example.net / example.org
+        assert domains <= {"example.com", "example.local", "example.net", "example.org"}, (path.name, domains)
 
 
 # ---------------------------------------------------------------------------

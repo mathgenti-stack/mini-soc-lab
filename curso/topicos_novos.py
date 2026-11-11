@@ -279,24 +279,36 @@ IR = {
     ],
 }
 
-NEW_TOPICS = [POWERSHELL, LOGS, SIEM, PHISHING, IR]
+from topicos_servicedesk import SD_RESUMOS, SD_TOPICS  # noqa: E402  (fase 1: Service Desk)
+from topicos_soc2 import SOC2_RESUMOS, SOC2_TOPICS  # noqa: E402  (fase 2: Sysmon, detecção, threat intel)
 
-# A trilha do curso: os módulos na ordem de estudo (substitui os módulos do TryHackMe na aba Tópicos).
+NEW_TOPICS = [POWERSHELL, LOGS, SIEM, PHISHING, IR] + SD_TOPICS + SOC2_TOPICS
+
+# A trilha do curso: os módulos na ordem de estudo. "f" abre uma fase (título, cor e descrição).
+# Fase 1 é a fundação de Service Desk / IT Support; fase 2 é o SOC.
 TRILHA = [
-    {"n": "Primeiros passos", "ic": "🚀", "ids": ["careers", "defsec", "offsec"],
-     "d": "O que é cibersegurança, o que faz quem ataca, o que faz quem defende e onde o SOC entra."},
+    {"f": "Fase 1 · Fundação", "ft": "Service Desk e IT Support", "fc": "#0ea5e9",
+     "fd": "Onde muita gente começa em TI: computadores, Windows, redes, linha de comando e o atendimento ao usuário, com a Fila de chamados para praticar.",
+     "n": "Primeiros passos", "ic": "🚀", "ids": ["careers", "sd"],
+     "d": "As carreiras em TI e segurança, e como funciona o Service Desk, a porta de entrada de muita gente."},
     {"n": "Como o computador funciona", "ic": "🖥️", "ids": ["insidepc", "ctypes", "clientserver", "virt", "cloud"],
      "d": "As peças, os tipos de máquina, quem pede e quem responde, máquinas virtuais e nuvem."},
-    {"n": "Dados e codificação", "ic": "🔢", "ids": ["dados", "encoding"],
-     "d": "Bits, bytes, hexadecimal, Base64: para não se assustar com um log 'embaralhado'."},
-    {"n": "Sistemas operacionais", "ic": "🪟", "ids": ["so", "win", "segso", "ms"],
-     "d": "Windows, contas, permissões e Active Directory: o terreno onde os ataques acontecem."},
+    {"n": "Sistemas operacionais", "ic": "🪟", "ids": ["so", "win", "ms"],
+     "d": "Windows, contas, permissões e Active Directory: o que você mais vai administrar no suporte."},
     {"n": "Redes", "ic": "🌐", "ids": ["redes"],
-     "d": "IP, DNS, portas e protocolos: como as máquinas conversam e por onde o ataque chega."},
-    {"n": "Linha de comando", "ic": "⌨️", "ids": ["linux", "wcli", "powershell"],
-     "d": "Bash, CMD e PowerShell para ler e filtrar logs. Tem desafios práticos no lab."},
-    {"n": "O trabalho no SOC", "ic": "🛡️", "ids": ["soc", "logs", "siem", "phishing", "ir"],
+     "d": "IP, DNS, portas e protocolos: como as máquinas conversam e por que 'a internet caiu'."},
+    {"n": "Linha de comando", "ic": "⌨️", "ids": ["wcli", "powershell", "linux"],
+     "d": "CMD, PowerShell e Bash para diagnosticar e ler logs. Tem desafios práticos no lab."},
+    {"n": "O trabalho no Service Desk", "ic": "🎧", "ids": ["atend", "trouble", "contas"],
+     "d": "Atendimento, troubleshooting, contas e Microsoft 365. Pratique na Fila de chamados."},
+    {"f": "Fase 2 · Segurança", "ft": "Analista de SOC", "fc": "#8b5cf6",
+     "fd": "Com a base de suporte, o próximo passo: como pensa quem ataca e quem defende, logs, SIEM, phishing, resposta a incidentes e investigação.",
+     "n": "Segurança: o básico", "ic": "🛡️", "ids": ["defsec", "offsec", "segso", "dados", "encoding"],
+     "d": "Ataque e defesa, segurança do sistema e como os dados aparecem 'embaralhados' nos logs."},
+    {"n": "O trabalho no SOC", "ic": "🔎", "ids": ["soc", "logs", "siem", "phishing", "ir"],
      "d": "O dia a dia do analista: logs, SIEM, phishing e resposta a incidentes. O que as vagas mais pedem."},
+    {"n": "Investigação e detecção", "ic": "🔬", "ids": ["sysmon", "deteccao", "cti"],
+     "d": "O que acontece depois do login: Sysmon e EDR, regras de detecção e threat intel com MITRE ATT&CK."},
 ]
 
 # "Resumo de 1 minuto" de cada tópico novo (tela Recapitular).
@@ -342,3 +354,5 @@ RESUMOS = {
         "Ticket bom: o que, quando, onde, o que verificou, o que fez e o que falta.",
     ],
 }
+RESUMOS.update(SD_RESUMOS)
+RESUMOS.update(SOC2_RESUMOS)

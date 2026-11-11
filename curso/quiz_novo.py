@@ -316,3 +316,8 @@ Q = [
      "Comunicação clara é a habilidade que mais aparece nas vagas de SOC.",
      "02:12 UTC: login com sucesso de 203.0.113.88 em j.silva após 40 falhas. IP no AbuseIPDB. Sessões encerradas, conta desativada, IP bloqueado. Escalado ao N2."),
 ]
+
+from topicos_servicedesk import SD_Q  # noqa: E402
+from topicos_soc2 import SOC2_Q  # noqa: E402
+
+Q = Q + SD_Q + SOC2_Q
