@@ -86,3 +86,23 @@ def test_path_has_two_phases():
     first = [i for m in topics.TRILHA[:topics.TRILHA.index(phases[1])] for i in m["ids"]]
     assert {"sd", "atend", "trouble", "contas"} <= set(first) and "soc" not in first
 
+
+
+def test_interview_simulation_is_wired():
+    """The interview view (v10) reads the topics' interview sections; HR questions come from curso/."""
+    rh = load("entrevista_rh").RH
+    assert len({q["id"] for q in rh}) == len(rh) >= 3
+    assert all(q["q"] in PAGE for q in rh)
+    for piece in ('<div id="v10" class="hide"></div>', 'data-t="10"', "function rEnt()", "if(n==10)rEnt()",
+                  "function entBank()", "entCard(t)", 'rateCard("topico:"', "nudgeCard()"):
+        assert piece in PAGE, piece
+    # every topic still has an interview question the simulation can pick up
+    assert PAGE.count("Como explicar numa entrevista</h3>") >= 25
+
+
+def test_account_and_feedback_reachable_on_a_phone():
+    """On a phone the floating buttons give way to the "Mais" menu and a button in the header."""
+    conta = (ROOT / "conta.js").read_text(encoding="utf-8")
+    assert 'id="shacc"' in PAGE and 'id="shfb"' in PAGE
+    assert "window.soclabAccount" in conta and "sc-hchip" in conta
+    assert "grid-template-columns:repeat(6,1fr)" in PAGE  # six buttons in the bottom bar fit on one row

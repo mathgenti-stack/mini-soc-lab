@@ -303,7 +303,12 @@ const CSS = `
 .sc-chip:hover{background:rgba(255,255,255,.16)}
 .sc-dock{position:fixed;right:16px;bottom:16px;z-index:1000;display:flex;gap:8px;align-items:center}
 .sc-float{background:#0e1b2a;color:#e8f1fa;border-color:#223244;max-width:280px;box-shadow:0 4px 14px rgba(0,0,0,.25);margin:0}
-@media (max-width:999px){.sc-dock.curso{bottom:84px}}
+@media (max-width:999px){.sc-dock.curso{bottom:calc(80px + env(safe-area-inset-bottom,0px));right:12px}
+.sc-dock .sc-tx{display:none}
+.sc-dock .sc-float{width:46px;height:46px;padding:0;justify-content:center;font-size:20px;max-width:none}
+.sc-dock.curso{display:none}}
+.sc-hchip{display:none}
+@media (max-width:999px){.sc-hchip{display:inline-flex;flex:none;font-size:13px;padding:6px 12px;max-width:none}}
 .sc-in textarea{width:100%;box-sizing:border-box;min-height:130px;padding:12px 14px;border-radius:12px;border:1px solid var(--bd,#d6dee8);background:var(--sf,#fff);color:var(--tx,#101b28);font:15px/1.5 var(--sans,system-ui);margin-top:10px;resize:vertical}
 .sc-ctx{font:12px var(--mono,monospace);color:var(--mu,#566478);background:rgba(127,127,127,.1);border-radius:8px;padding:6px 10px;margin-top:8px;word-break:break-word}
 .sc-dlg{border:1px solid var(--bd,#d6dee8);border-radius:16px;padding:0;max-width:440px;width:calc(100% - 32px);background:var(--sf,#fff);color:var(--tx,#101b28);font:15px/1.5 var(--sans,system-ui)}
@@ -324,7 +329,7 @@ const CSS = `
 .sc-in hr{border:0;border-top:1px solid var(--bd,#d6dee8);margin:18px 0 12px}
 `;
 
-let chip = null, statusText = "";
+let chip = null, hchip = null, statusText = "";
 function setStatus(s) {
   statusText = s === "ok" ? "salvo na nuvem" : s === "erro" ? "sem conexão: salvo só aqui" : "";
   if (chip && chip.dataset.email) chip.title = chip.dataset.email + (statusText ? " · " + statusText : "");
@@ -467,12 +472,17 @@ function addStyle() {
 
 function paintChip(user) {
   chip.dataset.email = user ? user.email : "";
-  chip.textContent = user ? "☁️ " + (nameOf(user) || user.email) : "☁️ Entrar e salvar na nuvem";
+  const label = user ? (nameOf(user) || user.email) : "Entrar e salvar na nuvem";
+  chip.innerHTML = `☁️<span class="sc-tx"> ${escHtml(label)}</span>`;
+  if (hchip) hchip.textContent = user ? "☁️ " + (nameOf(user) || "Conta") : "☁️ Entrar";
+  const st = document.getElementById("shacct"), sd = document.getElementById("shaccd");
+  if (st) st.textContent = user ? "Minha conta" : "Entrar com e-mail";
+  if (sd) sd.textContent = user ? "Conectado como " + (nameOf(user) || user.email) : "Salve o progresso na nuvem (sem senha)";
   setStatus(statusText ? (statusText.startsWith("salvo") ? "ok" : "erro") : "");
 }
 
 // Janela "Dar feedback". where(): onde a pessoa está (vai junto com a mensagem).
-function openFeedback(page, where) {
+function openFeedback(page, where, preset) {
   let dlg = document.getElementById("sc-fb");
   if (!dlg) {
     dlg = el(`<dialog class="sc-dlg" id="sc-fb" aria-labelledby="sc-fbt"><div class="sc-in"></div></dialog>`);
@@ -484,7 +494,7 @@ function openFeedback(page, where) {
   try { ctx = String(where() || "").slice(0, 300); } catch (e) {}
   box.innerHTML = `<h2 id="sc-fbt">Dar feedback</h2>
     <p>Achou um erro? Algo ficou confuso? Tem uma ideia? Conta aqui. Vai direto para quem cuida do curso.</p>
-    <form id="sc-ff"><textarea id="sc-msg" maxlength="2000" required placeholder="Ex.: no desafio linux-03 eu não entendi o que é para responder."></textarea>
+    <form id="sc-ff"><textarea id="sc-msg" maxlength="2000" required placeholder="Ex.: no desafio linux-03 eu não entendi o que é para responder.">${escHtml(preset || "")}</textarea>
     ${ctx ? `<div class="sc-ctx">Vai junto: ${escHtml(ctx)}</div>` : ""}
     <p class="sc-err" id="sc-err"></p>
     <div class="sc-row"><button type="button" class="sc-b" id="sc-fx">Cancelar</button><button class="sc-b p" id="sc-fs">Enviar</button></div></form>
@@ -509,7 +519,7 @@ function openFeedback(page, where) {
 }
 
 function dock(page, where) {
-  const d = el(`<div class="sc-dock ${page}"><button type="button" class="sc-chip sc-float" id="sc-fbb">💬 Feedback</button></div>`);
+  const d = el(`<div class="sc-dock ${page}"><button type="button" class="sc-chip sc-float" id="sc-fbb" aria-label="Dar feedback" title="Dar feedback">💬<span class="sc-tx"> Feedback</span></button></div>`);
   d.querySelector("#sc-fbb").onclick = () => openFeedback(page, where);
   document.body.appendChild(d);
   return d;
@@ -527,6 +537,8 @@ export async function mountCourse(onReload) {
   };
   const refresh = async () => {
     const user = await currentUser();
+    window.soclabAccount.user = user;
+    window.soclabAccount.ready = true;
     greet(user);
     paintChip(user);
     if (user) {
@@ -536,6 +548,18 @@ export async function mountCourse(onReload) {
     paintChip(user);
   };
   chip.onclick = () => openDialog(refresh);
+  const where = () => (window.soclabWhere ? window.soclabWhere() : "");
+  hchip = el(`<button class="sc-chip sc-hchip" type="button" id="sc-hacc">☁️ Entrar</button>`);
+  hchip.onclick = () => openDialog(refresh);
+  const hr = document.querySelector("#hero .hr");
+  if (hr) hr.appendChild(hchip);
+  // para a página: abrir a conta, abrir o feedback, mandar uma avaliação rápida e saber se há login
+  window.soclabAccount = {
+    ready: false, user: null,
+    open: () => openDialog(refresh),
+    feedback: (preset) => openFeedback("curso", where, preset),
+    send: (context, message) => sendFeedback("curso", context, message),
+  };
   dock("curso", () => (window.soclabWhere ? window.soclabWhere() : "")).appendChild(chip);
   const fromHash = () => {
     if (location.hash === "#conta") { history.replaceState(null, "", location.pathname); openDialog(refresh); }

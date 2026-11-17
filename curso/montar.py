@@ -1,4 +1,4 @@
-"""Grava os tópicos novos, as perguntas de quiz, a trilha e a Fila de chamados do curso em estudar.html.
+"""Grava os tópicos novos, as perguntas de quiz, a trilha, a Fila de chamados e a simulação de entrevista em estudar.html.
 
 Uso (na pasta do projeto):  python curso/montar.py
 Pode rodar quantas vezes quiser: o que foi gravado antes, entre as marcas /* >>> curso */ e /* <<< curso */,
@@ -11,6 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from chamados import CATEGORIAS, TICKETS, TIPOS  # noqa: E402
+from entrevista_rh import RH  # noqa: E402
 from quiz_novo import Q  # noqa: E402
 from topicos_novos import NEW_TOPICS, RESUMOS, TRILHA  # noqa: E402
 
@@ -124,6 +125,15 @@ def build(html):
     block = (fmark + js(TIPOS) + ";\nconst TK_CATS=" + js(CATEGORIAS) + ";\nconst TK=" + js(TICKETS) + ";\n"
              + engine + "\n" + END)
     html = html.replace(init, "\n" + block + init, 1)
+    # the interview simulation (curso/entrevista.js) and its HR questions, also before start-up
+    for q in RH:
+        assert q["id"].startswith("rh-") and q["q"] and q["pt"] and q["tip"] and q["a"], q
+    ent = (Path(__file__).resolve().parent / "entrevista.js").read_text(encoding="utf-8").strip()
+    emark = BEGIN + "\nconst ENT_RH="
+    if emark in html:
+        a = html.index(emark)
+        html = html[:a] + html[html.index(END, a) + len(END) + 1:]
+    html = html.replace(init, "\n" + emark + js(RH) + ";\n" + ent + "\n" + END + init, 1)
     start = html.index("\nconst MODS=[\n") + 1
     end = html.index("\n];", start) + 3
     mods = "const MODS=[\n" + ",\n".join(js(m) for m in TRILHA) + "\n];"
@@ -135,4 +145,5 @@ if __name__ == "__main__":
     html = PAGE.read_text(encoding="utf-8")
     new = build(html)
     PAGE.write_text(new, encoding="utf-8", newline="\n")
-    print(f"ok: {len(NEW_TOPICS)} tópicos, {len(Q)} perguntas, {len(TRILHA)} módulos na trilha, {len(TICKETS)} chamados")
+    print(f"ok: {len(NEW_TOPICS)} tópicos, {len(Q)} perguntas, {len(TRILHA)} módulos na trilha, {len(TICKETS)} chamados, "
+          f"{len(RH)} perguntas de RH na entrevista")

@@ -36,7 +36,7 @@ button,input,textarea{font-family:var(--sans)}
 .stats span{font-size:12px;color:var(--hdm)}
 .pghead{padding:22px 0 8px}.pghead h1{font:600 26px/1.15 var(--sans);margin:0;text-wrap:balance}.pghead p{margin:6px 0 0;color:var(--mu);font-size:15px}
 /* barra de abas */
-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:640px;z-index:20;display:grid;grid-template-columns:repeat(5,1fr);background:var(--sf);border-top:1px solid var(--bd);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:640px;z-index:20;display:grid;grid-template-columns:repeat(6,1fr);background:var(--sf);border-top:1px solid var(--bd);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
 nav button{display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;color:var(--mu);font:500 11px var(--sans);padding:6px 2px;border-radius:10px;min-width:0;min-height:50px;cursor:pointer}
 nav svg,.sheet svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
 nav button.on{color:var(--ac)}nav button.on span{font-weight:600}
@@ -320,13 +320,95 @@ pre.lg.mine{background:var(--sf2);color:var(--tx)}
 .sdbars div{display:grid;grid-template-columns:110px 1fr 54px;gap:10px;align-items:center;font-size:14px}
 .sdbars b{font:600 13px var(--mono);text-align:right}
 .sdc .q{color:#0369a1}
+/* ===== Simulação de entrevista ===== */
+.btn.sm{min-height:38px;padding:7px 12px;font-size:14px;flex:none}
+.row .btn.sm{min-width:0}
+.btn.ghost{background:transparent;box-shadow:none}
+.enthd{display:flex;align-items:center;gap:12px}
+.enthd .btn{flex:none;min-height:40px;padding:8px 14px;min-width:0}
+.enthd .mu{flex:1}
+.entclk{font:600 14px var(--mono);color:var(--ac);background:var(--acs);padding:5px 10px;border-radius:99px}
+.entclk.long{color:#f59e0b;background:color-mix(in srgb,#f59e0b 15%,transparent)}
+.entbar{display:block;margin:12px 0 18px}
+.entq{display:flex;gap:12px;align-items:flex-start;margin:0 0 16px}
+.entq.me{justify-content:flex-end}
+.eav{width:46px;height:46px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:24px;background:linear-gradient(135deg,#0e2a3a,#0f4c4a);box-shadow:var(--sh)}
+.eav.big{width:64px;height:64px;font-size:34px}
+.ebub{background:var(--sf);border:1px solid var(--bd);border-radius:4px 18px 18px 18px;padding:14px 16px;box-shadow:var(--sh);min-width:0;flex:1}
+.entq.me .ebub{border-radius:18px 4px 18px 18px;background:color-mix(in srgb,var(--ac) 10%,var(--sf));border-color:color-mix(in srgb,var(--ac) 35%,var(--bd));flex:0 1 auto;max-width:85%}
+.entq.me .ebub p{margin:4px 0 0;white-space:pre-wrap;word-break:break-word}
+.ek{font:600 12px var(--sans);letter-spacing:.05em;text-transform:uppercase;color:var(--ac)}
+.eqt{font:600 20px/1.35 var(--sans);margin:6px 0 4px;letter-spacing:-.01em}
+.ept{margin:0 0 4px;font-size:14px}
+.ebub .row{align-items:center;margin-top:8px}
+.etag{font-size:13px;color:var(--mu);margin-left:auto}
+.entlang{margin:10px 0 2px}
+.entans textarea{min-height:140px}
+.enttip p{margin:6px 0 0}
+.ema{font-size:16px;line-height:1.65;margin:8px 0 4px}
+.ema mark{border-radius:4px;padding:0 3px;color:inherit}
+.ema mark.hit{background:color-mix(in srgb,var(--ok) 28%,transparent)}
+.ema mark.miss{background:color-mix(in srgb,#f59e0b 26%,transparent)}
+.mu.sm{font-size:13px}
+.ewarn{font-size:14px;color:#f59e0b;margin:8px 0 0}
+.entmod .btn.sm{margin-top:8px}
+.erate,.rops{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.erate button,.rops button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 6px;border-radius:14px;border:1px solid var(--bd);background:var(--sf);color:var(--tx);font:600 13px var(--sans);cursor:pointer;transition:border-color .15s,background .15s,transform .1s}
+.erate button span,.rops button span{font-size:26px}
+.erate button:hover,.rops button:hover{border-color:var(--ac)}
+.erate button.on,.rops button.on{border-color:var(--ac);background:var(--acs);transform:translateY(-1px)}
+.entres{display:flex;gap:18px;align-items:center}
+.eres{width:96px;height:96px;flex:none;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(var(--sf) 58%,transparent 59%),conic-gradient(var(--ac) calc(var(--p,0)*1%),var(--sf2) 0);box-shadow:var(--sh)}
+.eres b{font:700 26px var(--mono)}
+.eres span{font-size:12px;color:var(--mu)}
+.eli{display:flex;gap:12px;align-items:flex-start;padding:14px}
+.eli .er{font-size:24px;flex:none}
+.eli b{display:block;font-size:15px}
+.eli .mu{display:block;font-size:13px;margin-top:2px}
+.eli .btn.sm{margin-top:8px}
+.entin{display:flex;gap:14px;align-items:flex-start}
+.entin .wl{margin:8px 0 0;padding-left:20px}
+.entin .wl li{margin-bottom:6px}
+.eroles .note.on{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 9%,var(--sf))}
+.eopt{margin-top:12px}
+.entc{border-color:color-mix(in srgb,var(--ac) 40%,var(--bd))}
+.entc .btn{flex:none;min-width:180px}
+/* avaliação rápida e convite para a conta */
+.rate{margin-top:14px}
+.rate .q{margin-bottom:2px}
+.rate .rtx{min-height:84px;margin-top:12px}
+.rate.ok{display:flex;gap:12px;align-items:center}
+.rate.ok span{font-size:26px}
+.rate.ok p{margin:0}
+.nudge{display:flex;gap:14px;align-items:flex-start;border-color:color-mix(in srgb,#38bdf8 45%,var(--bd));background:linear-gradient(135deg,color-mix(in srgb,#38bdf8 10%,var(--sf)),var(--sf) 70%)}
+.nudge .ni{font-size:30px;flex:none}
+.nudge p{margin:6px 0 0}
+/* ===== Celular ===== */
+@media(max-width:999px){
+nav button span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+nav button{font-size:10.5px;min-height:48px;padding:5px 1px}
+nav svg{width:22px;height:22px}
+main{padding-bottom:16px}
+.hi{font-size:19px}
+.hero .hr{flex-wrap:nowrap}
+.eqt{font-size:18px}
+.entres{gap:14px}
+.eres{width:84px;height:84px}
+.entc .btn{min-width:0;width:100%}
+}
+@media(max-width:520px){
+.entin .eav.big{display:none}
+.entq .eav{width:38px;height:38px;font-size:20px}
+.etag{margin-left:0;width:100%}
+.erate button,.rops button{font-size:12px;padding:10px 4px}
+}
 /* <<< curso */
 </style></head><body>
 <header class="hero" id="hero"><div class="hr"><div class="av">S</div><div class="who"><div class="hi">Olá! Bons estudos</div><div class="sb">Do Service Desk ao SOC · Mini SOC Lab</div></div></div><div class="bar"><i id="bar"></i></div><div class="pct" id="pct"></div><div class="stats"><div><b id="s1">0%</b><span>do curso</span></div><div><b id="s2">0</b><span>perguntas</span></div><div><b id="s3">0</b><span>tópicos</span></div></div></header>
 <div class="pghead hide" id="ph0"><h1 id="pht"></h1><p id="phs"></p></div>
-<main><div id="v7"></div><div id="v8" class="hide"></div><div id="v4" class="hide"></div><div id="v0" class="hide"></div><div id="v1" class="hide"></div><div id="v2" class="hide"></div><div id="v3" class="hide"></div><div id="v5" class="hide"></div><div id="v6" class="hide"></div><div id="v9" class="hide"></div></main>
+<main><div id="v7"></div><div id="v8" class="hide"></div><div id="v4" class="hide"></div><div id="v0" class="hide"></div><div id="v1" class="hide"></div><div id="v2" class="hide"></div><div id="v3" class="hide"></div><div id="v5" class="hide"></div><div id="v6" class="hide"></div><div id="v9" class="hide"></div><div id="v10" class="hide"></div></main>
 <footer class="ft"><b>Mini SOC Lab</b> · estude aqui, pratique no <a href="./?lang=pt-BR" style="color:var(--ac)">lab</a></footer>
-<div class="sheetw"><div class="sheet hide" id="sheet"><button data-t="5"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2.5-6 4 12 2.5-6H21"/></svg><div>Treino<span class="d">Cenários, cartões, diagramas e glossário</span></div></button><button data-t="6"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg><div>Desafios<span class="d">Decisões rápidas em situações de trabalho</span></div></button><button data-t="2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16.5 4.5a2 2 0 0 1 3 3L8 19z"/></svg><div>Write-ups<span class="d">Suas anotações</span></div></button></div></div>
+<div class="sheetw"><div class="sheet hide" id="sheet"><button data-t="10"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg><div>Entrevista<span class="d">Simule uma entrevista de emprego, pergunta por pergunta</span></div></button><button data-t="5"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2.5-6 4 12 2.5-6H21"/></svg><div>Treino<span class="d">Cenários, cartões, diagramas e glossário</span></div></button><button data-t="6"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg><div>Desafios<span class="d">Decisões rápidas em situações de trabalho</span></div></button><button data-t="2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16.5 4.5a2 2 0 0 1 3 3L8 19z"/></svg><div>Write-ups<span class="d">Suas anotações</span></div></button><button id="shacc"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><div><span id="shacct">Minha conta</span><span class="d" id="shaccd">Entre com seu e-mail para salvar o progresso</span></div></button><button id="shfb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 21l1.8-5.2A8 8 0 1 1 21 12z"/></svg><div>Dar feedback<span class="d">Achou um erro ou tem uma ideia? Conta aqui</span></div></button></div></div>
 <nav aria-label="Navegação"><button data-t="7" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/></svg><span>Hoje</span></button><button data-t="8"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-4.5L4 9"/><path d="M4 4v5h5"/><path d="M4 13a8 8 0 0 0 14 4.5L20 15"/><path d="M20 20v-5h-5"/></svg><span>Recapitular</span></button><button data-t="4"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H20v15H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H20v-3"/></svg><span>Trilha</span></button><button data-t="9"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg><span>Chamados</span></button><button data-t="1"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><path d="M12 17h.01"/></svg><span>Quiz</span></button><button id="more"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg><span>Mais</span></button><a class="lab" href="./?lang=pt-BR">🧪 Ir para o lab</a></nav>
 <div class="toast hide" id="toast" role="status"></div><div class="dlg hide" id="dlg"><div class="dbox"><p id="dmsg"></p><div class="row"><button class="btn" id="dno">Cancelar</button><button class="btn r" id="dyes">Confirmar</button></div></div></div>
 <script>
@@ -1862,8 +1944,8 @@ Object.keys(LABENV).forEach(e=>{const xs=L.filter(x=>x[1]==e);if(!xs.length)retu
 return h+`<div class="row"><a class="btn" style="text-decoration:none;text-align:center" href="./?lang=pt-BR" target="_blank" rel="noopener">Abrir o SOC Lab</a></div>`}
 let TP=null,TS="Estudar";
 const rF0=rF;rF=function(){rF0();$("v3").insertAdjacentHTML("afterbegin",'<button class="btn" id="bk3" style="width:100%;margin-bottom:8px">← Voltar para Redes</button>');$("bk3").onclick=()=>goTab(4)};
-function goTab(n){document.querySelectorAll("[data-t]").forEach(x=>x.classList.toggle("on",x.dataset.t==(n==3?4:n)));$("more").classList.toggle("on",[0,2,5,6].includes(n));[0,1,2,3,4,5,6,7,8,9].forEach(i=>$("v"+i).classList.toggle("hide",i!=n));if(n==1)rQ();if(n==2)rW();if(n==3)rF();if(n==4)rT();if(n==5)rX();if(n==6)rCh();if(n==7)rHj();if(n==8)rRc();if(n==9)rSd();pgHead(n);prog()}
-document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>goTab(+b.dataset.t));$("more").onclick=e=>{e.stopPropagation();$("sheet").classList.toggle("hide")};document.addEventListener("click",e=>{if(!e.target.closest("#sheet"))$("sheet").classList.add("hide")});
+function goTab(n){document.querySelectorAll("[data-t]").forEach(x=>x.classList.toggle("on",x.dataset.t==(n==3?4:n)));$("more").classList.toggle("on",[0,2,5,6,10].includes(n));[0,1,2,3,4,5,6,7,8,9,10].forEach(i=>$("v"+i).classList.toggle("hide",i!=n));if(n==1)rQ();if(n==2)rW();if(n==3)rF();if(n==4)rT();if(n==5)rX();if(n==6)rCh();if(n==7)rHj();if(n==8)rRc();if(n==9)rSd();if(n==10)rEnt();pgHead(n);prog()}
+document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>goTab(+b.dataset.t));$("more").onclick=e=>{e.stopPropagation();$("sheet").classList.toggle("hide")};$("shacc").onclick=()=>{$("sheet").classList.add("hide");if(window.soclabAccount)window.soclabAccount.open()};$("shfb").onclick=()=>{$("sheet").classList.add("hide");if(window.soclabAccount)window.soclabAccount.feedback()};document.addEventListener("click",e=>{if(!e.target.closest("#sheet"))$("sheet").classList.add("hide")});
 function startT(t,n){const ids=shuf(MQ.map((_,i)=>i).filter(i=>t.tags.includes(MQ[i][0])));ids.sort((a,b)=>((S.miss[b]||0)>0)-((S.miss[a]||0)>0));QZ={ids:shuf(ids.slice(0,n)),i:0,s:0,wrong:[],pick:{},opts:null,done:0,saved:0,tp:t.id};goTab(1)}
 const MODS=[
 {"f": "Fase 1 · Fundação", "ft": "Service Desk e IT Support", "fc": "#0ea5e9", "fd": "Onde muita gente começa em TI: computadores, Windows, redes, linha de comando e o atendimento ao usuário, com a Fila de chamados para praticar.", "n": "Primeiros passos", "ic": "🚀", "ids": ["careers", "sd"], "d": "As carreiras em TI e segurança, e como funciona o Service Desk, a porta de entrada de muita gente."},
@@ -1902,16 +1984,16 @@ const after=k=>{const ns=steps.filter(x=>x[0]!="Guia"),i=ns.findIndex(x=>x[0]==k
 let n=0,h=`<button class="btn bk" id="bk">← Trilha</button><div class="thd" style="--c:${COL[((w&&w.mi)||0)%COL.length]}"><span class="ic">${t.ic}</span><div class="tt"><span class="mu">${w&&w.m?`Módulo ${w.mi+1} · ${esc(w.m.n)} · tópico ${w.ti+1} de ${w.m.ids.length}`:"Tópico extra"}</span><h2>${esc(t.n)}</h2></div><span class="tp">${s.p}%</span></div><div class="steps">`;
 steps.forEach(([k,ic,ok])=>{const num=k=="Guia"?ic:++n;h+=`<button data-s="${k}" class="${k==TS?"on":""}${ok?" ok":""}"><span class="sn">${ok?"✓":num}</span><span class="sl">${k}</span></button>`});h+="</div>";
 const goBtn=(label,id)=>`<div class="nextc"><button class="btn p" id="${id}">${label}</button></div>`;
-if(TS=="Estudar")h+=`<div class="st">${t.st}</div>`+(LAB[t.id]?`<div class="card labc"><div class="q">🧪 Agora pratique no SOC Lab</div><p class="mu">${LAB[t.id].length} desafios com logs de verdade usam este assunto (${labCount(t)[0]} resolvidos).</p></div>`:"")+(FILA[t.id]?sdCard(t):"")+goBtn(s.read?`Continuar: ${after("Estudar")} →`:`✓ Terminei de ler · ${after("Estudar")} →`,"gonext");
+if(TS=="Estudar")h+=`<div class="st">${t.st}</div>`+entCard(t)+(LAB[t.id]?`<div class="card labc"><div class="q">🧪 Agora pratique no SOC Lab</div><p class="mu">${LAB[t.id].length} desafios com logs de verdade usam este assunto (${labCount(t)[0]} resolvidos).</p></div>`:"")+(FILA[t.id]?sdCard(t):"")+goBtn(s.read?`Continuar: ${after("Estudar")} →`:`✓ Terminei de ler · ${after("Estudar")} →`,"gonext");
 else if(TS=="Checklist"){h+='<p class="mu">Marque só o que você consegue explicar sem olhar. O quiz e os desafios do lab se marcam sozinhos.</p>';t.chk.forEach((x,j)=>{const k=t.id+"-"+j,on=S.tdone[k];h+=`<label class="it ${on?"d":""}"><input type="checkbox" data-k="${k}" ${on?"checked":""}><span>${esc(x)}</span></label>`});
-h+=s.done?`<div class="card win"><div class="q">🎉 Tópico concluído!</div><p class="mu">${nx?"Próximo da trilha: "+esc(nx.t.ic+" "+nx.t.n)+".":"Você chegou ao fim da trilha. Parabéns!"}</p>${nx?`<div class="row"><button class="btn p" id="gonx">Ir para ${esc(nx.t.n)} →</button></div>`:""}</div>`:`<p class="mu" style="margin-top:14px">Faltam ${t.chk.filter((_,j)=>!S.tdone[t.id+"-"+j]).length} itens para concluir este tópico.</p>`}
+h+=s.done?`<div class="card win"><div class="q">🎉 Tópico concluído!</div><p class="mu">${nx?"Próximo da trilha: "+esc(nx.t.ic+" "+nx.t.n)+".":"Você chegou ao fim da trilha. Parabéns!"}</p>${nx?`<div class="row"><button class="btn p" id="gonx">Ir para ${esc(nx.t.n)} →</button></div>`:""}</div>`+rateCard("topico:"+t.id,"este tópico"):`<p class="mu" style="margin-top:14px">Faltam ${t.chk.filter((_,j)=>!S.tdone[t.id+"-"+j]).length} itens para concluir este tópico.</p>`}
 else if(TS=="Praticar")h+=(LAB[t.id]?labHTML(t):"")+(FILA[t.id]?sdPrat(t):"")+goBtn(`Próximo passo: ${after("Praticar")} →`,"gonext");
 else{const qn=MQ.filter(q=>t.tags.includes(q[0])).length,qi=quizIdx(t);h+=`<div class="card"><div class="q">❓ Quiz de ${esc(t.n)}</div><p class="mu">${qn} perguntas só deste tópico. ${qi>=0?esc(t.chk[qi].replace(/ no quiz.*/,""))+" e o checklist se marca sozinho.":""} Errou? A explicação aparece na hora, e a pergunta volta na revisão.</p><div class="row"><button class="btn p" id="qt10">Quiz de 10</button><button class="btn" id="qtall">Todas as ${qn}</button></div></div>`+(s.quiz?goBtn(`Próximo passo: ${after("Quiz")} →`,"gonext"):"")}
 el.innerHTML=h;$("bk").onclick=()=>{TP=null;rT();window.scrollTo(0,0)};
 el.querySelectorAll(".steps button").forEach(b=>b.onclick=()=>{if(b.dataset.s=="Guia")goTab(3);else{TS=b.dataset.s;rT();window.scrollTo(0,0)}});
 el.querySelectorAll("input[data-k]").forEach(c=>c.onchange=()=>{S.tdone[c.dataset.k]=c.checked;save();rT()});
 if($("gonext"))$("gonext").onclick=()=>{if(TS=="Estudar"&&!S.read[t.id]){S.read[t.id]=true;save();toast("Leitura marcada como feita.")}TS=after(TS)||"Checklist";rT();window.scrollTo(0,0)};
-if($("gonx"))$("gonx").onclick=()=>openTopic(nx.t,"Estudar");
+if($("gonx"))$("gonx").onclick=()=>openTopic(nx.t,"Estudar");if($("entt"))$("entt").onclick=()=>entStart({topic:t.id});rateBind(el,()=>rT());
 if(TS=="Quiz"){$("qt10").onclick=()=>startT(t,10);$("qtall").onclick=()=>startT(t,99)}}
 const WR=[
 ["Ordem errada: sem o DNS você não sabe o IP para abrir o TCP.","Ordem errada: o HTTP só vai depois da conexão e da proteção.","Ordem errada: o TLS só protege uma conexão que já existe."],
@@ -2482,7 +2564,7 @@ function recapPick(n){const all=MQ.map((_,i)=>i),miss=shuf(all.filter(i=>(S.miss
 function startRecap(ids){ids=ids||recapPick(10);QZ={ids:shuf(ids.slice()),i:0,s:0,wrong:[],pick:{},opts:null,done:0,saved:0,rc:1};goTab(1)}
 function toast(m){const t=$("toast");t.textContent=m;t.classList.remove("hide");clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.add("hide"),3200)}
 function ask(m,y,label){$("dmsg").textContent=m;$("dyes").textContent=label||"Confirmar";$("dlg").classList.remove("hide");$("dno").onclick=()=>$("dlg").classList.add("hide");$("dyes").onclick=()=>{$("dlg").classList.add("hide");y()}}
-const PHT={0:["Roteiro geral","O plano por semanas."],1:["Quiz","Perguntas de alternativa com explicação."],2:["Write-ups","Registre o que aprendeu com as suas palavras."],3:["Cartões de Redes","Revisão rápida de redes."],4:["Trilha","Fase 1: a fundação de Service Desk. Fase 2: o SOC. Em cada tópico, leia, pratique, faça o quiz e confira o checklist."],5:["Treino","Ferramentas para praticar depois de estudar."],6:["Desafios","Situações de trabalho em várias carreiras, decisão por decisão."],8:["Recapitular","Relembre o que já estudou, do resumo ao teste."],9:["Fila de chamados","Atenda chamados como no primeiro emprego de TI: triagem, perguntas, diagnóstico, solução e nota do ticket."]};
+const PHT={0:["Roteiro geral","O plano por semanas."],1:["Quiz","Perguntas de alternativa com explicação."],2:["Write-ups","Registre o que aprendeu com as suas palavras."],3:["Cartões de Redes","Revisão rápida de redes."],4:["Trilha","Fase 1: a fundação de Service Desk. Fase 2: o SOC. Em cada tópico, leia, pratique, faça o quiz e confira o checklist."],5:["Treino","Ferramentas para praticar depois de estudar."],6:["Desafios","Situações de trabalho em várias carreiras, decisão por decisão."],8:["Recapitular","Relembre o que já estudou, do resumo ao teste."],10:["Entrevista","Treine as perguntas que caem em entrevista de Service Desk e de SOC. Responda falando ou escrevendo e compare com a resposta modelo."],9:["Fila de chamados","Atenda chamados como no primeiro emprego de TI: triagem, perguntas, diagnóstico, solução e nota do ticket."]};
 function pgHead(n){const p=PHT[n];$("hero").classList.toggle("hide",n!=7);$("ph0").classList.toggle("hide",!p);if(p){$("pht").textContent=p[0];$("phs").textContent=p[1]}$("sheet").classList.add("hide");try{window.scrollTo(0,0)}catch(e){}}
 function rHj(){const el=$("v7"),h=hojeD(),dc=dueN(),tp=hTopic();let tot=0,ok=0;const st=S.st||{};Object.keys(st).forEach(k=>{tot+=st[k][1];ok+=st[k][0]});
 const T=[...(tot?[{id:"rec",ic:"🧠",t:"Recapitular: 10 perguntas misturadas",s:"Começa pelo que você errou ou ainda não viu.",b:"Começar",f:()=>startRecap()}]:[]),
@@ -2495,8 +2577,8 @@ const T=[...(tot?[{id:"rec",ic:"🧠",t:"Recapitular: 10 perguntas misturadas",s
 const isD=x=>!!(h.t[x.id]||x.auto),core=T.filter(x=>!x.extra),dn=core.filter(isD).length,sk=hStreak();
 const row=x=>{const d=isD(x);return `<div class="task ${d?"d":""}${x.auto&&!h.t[x.id]?" auto":""}" data-id="${x.id}"><div class="th"><span class="ti">${x.ic}</span><div class="tb"><b>${esc(x.t)}</b><span class="mu">${esc(x.s)}</span></div><input type="checkbox" data-c="${x.id}" aria-label="Tarefa feita" ${d?"checked":""} ${x.man||x.note?"":"disabled"}></div>${x.b?`<button class="btn ${x.id=="rec"&&!d?"p":""}" data-b="${x.id}">${x.b}</button>`:""}${x.note?`<textarea id="hjn" placeholder="Hoje eu aprendi que...">${esc(h.n||"")}</textarea><div class="row"><button class="btn" id="hjm">Ditar</button><button class="btn p" id="hjs">Salvar</button></div><p class="mu" id="hjmsg"></p>`:""}</div>`};
 const ns=nextStep(tp),wt=where(tp),L0=trilha(),dn0=L0.filter(x=>tStatus(x.t)=="done").length;
-el.innerHTML=`<div class="cont" style="--c:${COL[((wt&&wt.mi)||0)%COL.length]}"><span class="k">${tStatus(tp)=="new"&&!dn0?"Comece por aqui":"Continue de onde parou"}</span><div class="ct"><span class="ic">${tp.ic}</span><div><b>${esc(tp.n)}</b><span class="mu">${wt&&wt.m?`Módulo ${wt.mi+1} · ${esc(wt.m.n)}`:""}</span></div></div><div class="cs">Próximo passo: <b>${esc(ns[1])}</b></div><span class="bar"><i style="width:${tPct(tp)}%"></i></span><button class="btn p" id="hcont">${tStatus(tp)=="new"?"Começar":"Continuar"} →</button><span class="mu cf">${dn0} de ${L0.length} tópicos da trilha concluídos</span></div><div class="sum"><div class="sn"><b>${dn}</b><span>de ${core.length}</span></div><div class="sx"><div class="sl">tarefas de hoje</div><span class="bar"><i style="width:${100*dn/core.length}%"></i></span><div class="chips">${sk?`<span class="chip">${sk} dia${sk>1?"s":""} seguido${sk>1?"s":""}</span>`:`<span class="chip off">3 tarefas contam como um dia</span>`}${tot?`<span class="chip off">${tot} respondidas · ${Math.round(100*ok/tot)}% de acerto</span>`:""}</div></div></div><h2>Para fazer hoje</h2>`+core.map(row).join("")+`<p class="mu">Marque as tarefas manuais quando terminar. Recapitulação, revisão, desafio e chamado são marcados sozinhos.</p>`;
-el.querySelectorAll("[data-b]").forEach(b=>b.onclick=()=>T.find(x=>x.id==b.dataset.b).f());$("hcont").onclick=()=>openTopic(tp);
+el.innerHTML=`<div class="cont" style="--c:${COL[((wt&&wt.mi)||0)%COL.length]}"><span class="k">${tStatus(tp)=="new"&&!dn0?"Comece por aqui":"Continue de onde parou"}</span><div class="ct"><span class="ic">${tp.ic}</span><div><b>${esc(tp.n)}</b><span class="mu">${wt&&wt.m?`Módulo ${wt.mi+1} · ${esc(wt.m.n)}`:""}</span></div></div><div class="cs">Próximo passo: <b>${esc(ns[1])}</b></div><span class="bar"><i style="width:${tPct(tp)}%"></i></span><button class="btn p" id="hcont">${tStatus(tp)=="new"?"Começar":"Continuar"} →</button><span class="mu cf">${dn0} de ${L0.length} tópicos da trilha concluídos</span></div><div class="sum"><div class="sn"><b>${dn}</b><span>de ${core.length}</span></div><div class="sx"><div class="sl">tarefas de hoje</div><span class="bar"><i style="width:${100*dn/core.length}%"></i></span><div class="chips">${sk?`<span class="chip">${sk} dia${sk>1?"s":""} seguido${sk>1?"s":""}</span>`:`<span class="chip off">3 tarefas contam como um dia</span>`}${tot?`<span class="chip off">${tot} respondidas · ${Math.round(100*ok/tot)}% de acerto</span>`:""}</div></div></div>`+nudgeCard()+`<h2>Para fazer hoje</h2>`+core.map(row).join("")+`<p class="mu">Marque as tarefas manuais quando terminar. Recapitulação, revisão, desafio e chamado são marcados sozinhos.</p>`;
+el.querySelectorAll("[data-b]").forEach(b=>b.onclick=()=>T.find(x=>x.id==b.dataset.b).f());$("hcont").onclick=()=>openTopic(tp);nudgeBind(el,rHj);
 el.querySelectorAll("input[data-c]").forEach(c=>c.onchange=()=>{const x=T.find(t=>t.id==c.dataset.c);if(x.note)return;hojeD().t[x.id]=c.checked;save();rHj()});
 $("hjs").onclick=()=>{const v=$("hjn").value.trim(),hd=hojeD();hd.n=v;hd.t.note=!!v;save();rHj();toast(v?"Anotação salva.":"Anotação apagada.")};
 $("hjm").onclick=()=>dictate($("hjn"),"pt-BR",$("hjm"),$("hjmsg"))}
@@ -2621,12 +2703,258 @@ if($("ntcp"))$("ntcp").onclick=async()=>{try{await navigator.clipboard.writeText
 function tkFocus(){const i=$("tcmd"),o=$("tout");if(o)o.scrollTop=o.scrollHeight;if(i)i.focus({preventScroll:true})}
 sdTick();
 /* <<< curso */
+/* >>> curso */
+const ENT_RH=[{"id": "rh-1", "q": "Can you tell me a little about yourself?", "pt": "Fale um pouco sobre você.", "tip": "Quase sempre é a primeira. Use presente → passado → futuro em 1 minuto: o que você faz hoje, o que estudou e praticou (este curso e o lab contam), e a vaga que você quer.", "a": "I'm moving into IT and security. Over the last months I've studied networking, Windows, Linux and logs, and I practise in a home lab where I analyse real logs and handle simulated support tickets. I'm looking for my first role where I can help users, learn fast and grow into a SOC analyst."}, {"id": "rh-2", "q": "Tell me about a problem you solved.", "pt": "Conte sobre um problema que você resolveu.", "tip": "Use o método STAR: Situação, Tarefa, Ação e Resultado. Pode ser um caso do lab ou da Fila de chamados. Fale mais da Ação (o que VOCÊ fez) e termine com o resultado.", "a": "In my lab I investigated a suspicious login. My task was to find out if the account was compromised. I filtered the failed and successful logon events, found many failures from one IP followed by a success, and checked what ran after the logon. As a result I wrote a short report with the timeline and the next steps."}, {"id": "rh-3", "q": "What is your greatest weakness?", "pt": "Qual é o seu maior ponto fraco?", "tip": "Escolha um ponto fraco real, mas que não impeça o trabalho, e mostre o que você já faz para melhorar. Evite \"sou perfeccionista\".", "a": "I sometimes spend too long trying to solve a problem alone. I've learnt to set a time limit, document what I tried and then ask for help or escalate, which is also how a good service desk works."}, {"id": "rh-4", "q": "Why should we hire you?", "pt": "Por que deveríamos contratar você?", "tip": "Junte três coisas: uma qualidade sua, uma prova (algo que você já fez) e o que você vai entregar para a empresa.", "a": "I'm curious, I document what I do and I learn fast. I've already practised the daily tasks of this role in a lab, such as triaging tickets, reading logs and writing clear notes, so I can contribute quickly and keep improving with the team."}];
+/* ===== Simulação de entrevista (curso/entrevista.js, copiado para estudar.html por curso/montar.py) =====
+   As perguntas técnicas vêm das seções "Como explicar numa entrevista" dos próprios tópicos (TOP[].st):
+   cada <p><b>pergunta</b><br><i>resposta modelo</i></p> vira uma pergunta. ENT_RH (curso/montar.py) traz as
+   perguntas de RH. Progresso em S.ent: {hist:[...], last:{id:nota}, lang}.
+   Também aqui: a avaliação rápida (rateCard) e o convite para entrar na conta (nudgeCard). */
+var ENTC = null;
+let ENTQ = null, ENTSET = null, RATEP = {};
+
+function entBank() {
+  if (ENTQ) return ENTQ;
+  ENTQ = [];
+  const phase = {};
+  let f = -1;
+  MODS.forEach(m => { if (m.f) f++; m.ids.forEach(id => { if (phase[id] == null) phase[id] = f <= 0 ? "sd" : "soc" }) });
+  TOP.forEach(t => {
+    const d = document.createElement("div");
+    d.innerHTML = t.st;
+    const h3 = [...d.querySelectorAll("h3")].find(x => /entrevista/i.test(x.textContent));
+    if (!h3) return;
+    let k = 0;
+    for (let e = h3.nextElementSibling; e && e.tagName != "H3"; e = e.nextElementSibling) {
+      const b = e.querySelector && e.querySelector("b"), i = e.querySelector && e.querySelector("i");
+      if (!b || !i) continue;
+      ENTQ.push({ id: t.id + "-" + (++k), q: b.textContent.trim(), a: i.textContent.trim(), tp: t.id, tn: t.n, ic: t.ic, area: phase[t.id] || "soc" });
+    }
+  });
+  ENT_RH.forEach(x => ENTQ.push(Object.assign({ area: "rh", ic: "🤝", tn: "RH" }, x)));
+  return ENTQ;
+}
+
+/* palavras-chave da resposta modelo: siglas, números e palavras longas */
+const ENT_STOP = new Set(("the and that this with from have they them their then than what when where which while into your about also just like only some such very will would could " +
+  "should there these those been being does doing done each other more most much many over under after before because first second check look need want work works " +
+  "working thing things something someone usually always often people person using used make sure know sometimes trying")
+  .split(" "));
+function entKeys(a) {
+  const seen = {}, out = [];
+  (a.match(/[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9]/g) || []).forEach(w => {
+    const lw = w.toLowerCase(), strong = /\d/.test(w) || /^[A-Z]{2,}/.test(w);
+    if (seen[lw] || ENT_STOP.has(lw)) return;
+    if (!strong && lw.length < 6) return;
+    seen[lw] = 1;
+    out.push({ w, lw, strong });
+  });
+  out.sort((x, y) => (y.strong - x.strong) || (y.lw.length - x.lw.length));
+  return out.slice(0, 8);
+}
+const entStem = lw => lw.length > 6 ? lw.slice(0, lw.length - 3) : lw;
+function entCover(a, ans) {
+  const t = " " + String(ans || "").toLowerCase() + " ";
+  return entKeys(a).map(k => Object.assign({ hit: k.strong ? new RegExp("(^|[^a-z0-9])" + k.lw.replace(/[-]/g, "\\-") + "([^a-z0-9]|$)").test(t) : t.includes(entStem(k.lw)) }, k));
+}
+function entMark(a, cov) {
+  let h = esc(a);
+  cov.forEach(k => { h = h.replace(new RegExp("\\b(" + k.w.replace(/[-]/g, "\\-") + ")\\b"), `<mark class="${k.hit ? "hit" : "miss"}">$1</mark>`) });
+  return h;
+}
+
+const ENT_ROLES = { sd: ["🎧", "Service Desk / Suporte N1", "Primeiro emprego em TI: atendimento, Windows, redes e contas."], soc: ["🛡️", "Analista de SOC N1", "Alertas, logs, SIEM, phishing e resposta a incidentes."], mix: ["🔀", "Misturado", "Um pouco de cada, como numa entrevista de verdade."] };
+const ENT_RATE = [["😬", "Preciso treinar", 0], ["🙂", "Quase lá", 1], ["😃", "Mandei bem", 2]];
+
+function entWhere() {
+  if (!ENTC) return "";
+  const q = ENTC.qs[Math.min(ENTC.i, ENTC.qs.length - 1)];
+  return ENTC.i >= ENTC.qs.length ? "resultado" : "pergunta " + (ENTC.i + 1) + " · " + q.q.slice(0, 70);
+}
+function entStarted(id) { const t = TOP.find(x => x.id == id); return t ? tStatus(t) != "new" : false }
+
+/* começa uma entrevista. o: {role, n, rh, only, topic, ids} */
+function entStart(o) {
+  S.ent = S.ent || { hist: [], last: {} };
+  const B = entBank(), last = S.ent.last || {};
+  let pool;
+  if (o.ids) pool = B.filter(x => o.ids.includes(x.id));
+  else if (o.topic) pool = B.filter(x => x.tp == o.topic);
+  else {
+    pool = B.filter(x => x.area != "rh" && (o.role == "mix" || x.area == o.role) && (!o.only || entStarted(x.tp)));
+    if (!pool.length) pool = B.filter(x => x.area != "rh" && (o.role == "mix" || x.area == o.role));
+    // primeiro o que nunca viu ou ainda não domina
+    pool = shuf(pool).sort((a, b) => (last[a.id] == null ? -1 : last[a.id]) - (last[b.id] == null ? -1 : last[b.id]));
+    pool = pool.slice(0, Math.max(1, o.n - (o.rh ? 1 : 0)));
+    if (o.rh) { const rh = shuf(B.filter(x => x.area == "rh")).sort((a, b) => (last[a.id] == null ? -1 : last[a.id]) - (last[b.id] == null ? -1 : last[b.id])); pool.unshift(rh[0]) }
+  }
+  ENTC = { o, qs: pool, i: 0, ans: {}, rate: {}, cov: {}, secs: {}, ph: "q", t0: Date.now() };
+  goTab(10); window.scrollTo(0, 0);
+}
+
+function entTimer() {
+  clearInterval(entTimer.h);
+  entTimer.h = setInterval(() => {
+    const e = $("entclk");
+    if (!e || !ENTC || ENTC.ph != "q") { clearInterval(entTimer.h); return }
+    const s = Math.round((Date.now() - ENTC.t0) / 1000);
+    e.textContent = "⏱ " + Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    e.classList.toggle("long", s > 120);
+  }, 1000);
+}
+function entSay(text) {
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US"; u.rate = .95;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  } catch (e) { toast("Este navegador não lê em voz alta.") }
+}
+
+function rEnt() {
+  const el = $("v10");
+  if (!ENTC) return entSetup(el);
+  if (ENTC.i >= ENTC.qs.length) return entEnd(el);
+  const c = ENTC, q = c.qs[c.i], n = c.qs.length, lang = (S.ent && S.ent.lang) || "en-US";
+  let h = `<div class="enthd"><button class="btn" id="entx">✕ Sair</button><span class="mu">Pergunta ${c.i + 1} de ${n}</span>${c.ph == "q" ? `<span class="entclk" id="entclk">⏱ 0:00</span>` : ""}</div><span class="bar entbar"><i style="width:${100 * c.i / n}%"></i></span>`;
+  h += `<div class="entq"><div class="eav">👩‍💼</div><div class="ebub"><span class="ek">Entrevistadora</span><p class="eqt">${esc(q.q)}</p>${q.pt ? `<p class="mu ept">${esc(q.pt)}</p>` : ""}<div class="row"><button class="btn sm" id="entsay">🔊 Ouvir a pergunta</button><span class="etag">${q.ic || ""} ${esc(q.tn)}</span></div></div></div>`;
+  if (c.ph == "q") {
+    h += `<div class="card entans"><div class="q">Sua resposta</div><p class="mu">Responda como se estivesse na entrevista: em voz alta (o botão escreve por você) ou digitando. Bom tamanho: de 30 segundos a 2 minutos.</p>`
+      + `<div class="pills entlang"><button class="pill${lang == "en-US" ? " on" : ""}" data-lang="en-US">Em inglês</button><button class="pill${lang == "pt-BR" ? " on" : ""}" data-lang="pt-BR">Em português</button></div>`
+      + `<textarea id="enta" placeholder="${lang == "en-US" ? "I would..." : "Eu faria..."}">${esc(c.ans[q.id] || "")}</textarea><p class="mu" id="entmsg"></p>`
+      + `<div class="row"><button class="btn" id="entmic">🎤 Falar</button><button class="btn p" id="entok">Ver resposta →</button></div><div class="row"><button class="btn sm ghost" id="entskip">Não sei, pular</button></div></div>`;
+    if (q.tip) h += `<div class="card enttip"><b>💡 Dica</b><p class="mu">${esc(q.tip)}</p></div>`;
+  } else {
+    const ans = c.ans[q.id] || "", cov = c.cov[q.id] || [], hit = cov.filter(k => k.hit).length, words = ans.trim() ? ans.trim().split(/\s+/).length : 0;
+    h += ans.trim() ? `<div class="entq me"><div class="ebub"><span class="ek">Você</span><p>${esc(ans)}</p></div><div class="eav">🙋</div></div>` : `<p class="mu">Você pulou esta. Leia a resposta modelo com calma e tente dizer com as suas palavras.</p>`;
+    h += `<div class="card entmod"><div class="q">✅ Resposta modelo</div><p class="ema">${entMark(q.a, cov)}</p>`
+      + (cov.length ? `<div class="chips"><span class="chip">${hit} de ${cov.length} palavras-chave</span>${words ? `<span class="chip off">${words} palavras · ${c.secs[q.id] || 0}s</span>` : ""}</div>` : "")
+      + `<p class="mu sm">${(S.ent && S.ent.lang) == "pt-BR" ? "Você respondeu em português: a comparação só acha siglas e números. Vale mais a sua autoavaliação." : "Verde: você falou. Laranja: faltou falar (ou falou de outro jeito)."}</p>`
+      + (words && words < 15 ? `<p class="ewarn">Resposta curta. Na entrevista, diga o que você faria, por quê, e dê um exemplo.</p>` : "")
+      + (words > 180 ? `<p class="ewarn">Resposta longa. Tente chegar ao ponto em até 2 minutos.</p>` : "")
+      + (q.tp ? `<button class="btn sm ghost" id="entrev">📖 Rever o tópico ${esc(q.tn)}</button>` : "") + `</div>`;
+    const r = c.rate[q.id];
+    h += `<div class="card"><div class="q">Como você se saiu?</div><p class="mu">Seja sincero: as que você marcar como "Preciso treinar" voltam primeiro na próxima vez.</p><div class="erate">${ENT_RATE.map(([ic, t, v]) => `<button class="${r === v ? "on" : ""}" data-r="${v}"><span>${ic}</span>${t}</button>`).join("")}</div></div>`;
+    if (r != null) h += `<div class="nextc"><button class="btn p" id="entnx">${c.i + 1 < n ? "Próxima pergunta →" : "Ver o resultado →"}</button></div>`;
+  }
+  el.innerHTML = h;
+  $("entx").onclick = () => ask("Sair da entrevista? As respostas desta vez não ficam salvas.", () => { ENTC = null; rEnt() }, "Sair");
+  $("entsay").onclick = () => entSay(q.q);
+  if (c.ph == "q") {
+    entTimer();
+    const ta = $("enta");
+    ta.oninput = () => { c.ans[q.id] = ta.value };
+    el.querySelectorAll("[data-lang]").forEach(b => b.onclick = () => { S.ent.lang = b.dataset.lang; save(); rEnt() });
+    $("entmic").onclick = () => dictate(ta, (S.ent && S.ent.lang) || "en-US", $("entmic"), $("entmsg"));
+    const go = () => { const b = $("entmic"); if (b && b._r) b._r.stop(); c.ans[q.id] = ta.value; c.secs[q.id] = Math.round((Date.now() - c.t0) / 1000); c.cov[q.id] = ta.value.trim() ? entCover(q.a, ta.value) : []; c.ph = "r"; rEnt(); window.scrollTo(0, 0) };
+    $("entok").onclick = () => { if (!ta.value.trim()) { $("entmsg").textContent = "Responda alguma coisa, mesmo curta. Ou toque em \"Não sei, pular\"."; return } go() };
+    $("entskip").onclick = () => { ta.value = ""; go() };
+  } else {
+    el.querySelectorAll("[data-r]").forEach(b => b.onclick = () => { c.rate[q.id] = +b.dataset.r; rEnt() });
+    if ($("entrev")) $("entrev").onclick = () => openTopic(TOP.find(t => t.id == q.tp), "Estudar");
+    if ($("entnx")) $("entnx").onclick = () => { c.i++; c.ph = "q"; c.t0 = Date.now(); if (c.i >= n) entSave(); rEnt(); window.scrollTo(0, 0) };
+  }
+}
+
+function entSave() {
+  const c = ENTC, pts = c.qs.reduce((a, q) => a + (c.rate[q.id] || 0), 0), score = Math.round(100 * pts / (2 * c.qs.length));
+  S.ent = S.ent || { hist: [], last: {} };
+  S.ent.last = S.ent.last || {}; S.ent.hist = S.ent.hist || [];
+  c.qs.forEach(q => S.ent.last[q.id] = c.rate[q.id] || 0);
+  S.ent.hist.unshift({ d: new Date().toISOString().slice(0, 10), role: c.o.topic ? "topic:" + c.o.topic : c.o.role || "mix", n: c.qs.length, s: score });
+  S.ent.hist = S.ent.hist.slice(0, 30);
+  c.score = score;
+  save();
+}
+
+function entEnd(el) {
+  const c = ENTC, sc = c.score || 0, bad = c.qs.filter(q => (c.rate[q.id] || 0) < 2);
+  const msg = sc >= 80 ? "Muito bom! Você está pronto para estas perguntas." : sc >= 50 ? "Bom caminho. Treine de novo as que ficaram no \"quase\"." : "Normal no começo. Reveja os tópicos e tente de novo amanhã.";
+  let h = `<div class="card entres"><div class="eres" style="--p:${sc}"><b>${sc}%</b><span>${c.qs.length} pergunta${c.qs.length > 1 ? "s" : ""}</span></div><div><div class="q">Fim da entrevista</div><p class="mu">${msg}</p></div></div>`;
+  h += `<h2>Suas respostas</h2>` + c.qs.map(q => { const r = c.rate[q.id] || 0; return `<div class="card eli"><span class="er">${ENT_RATE[r][0]}</span><div><b>${esc(q.q)}</b><span class="mu">${esc(q.tn)} · ${ENT_RATE[r][1]}</span>${r < 2 && q.tp ? `<button class="btn sm ghost" data-tp="${q.tp}">📖 Rever o tópico</button>` : ""}</div></div>` }).join("");
+  h += `<div class="row">${bad.length ? `<button class="btn p" id="entbad">Treinar de novo as ${bad.length} que faltaram</button>` : ""}<button class="btn${bad.length ? "" : " p"}" id="entnew">Nova entrevista</button></div>`;
+  h += rateCard("entrevista", "a simulação de entrevista");
+  el.innerHTML = h;
+  el.querySelectorAll("[data-tp]").forEach(b => b.onclick = () => openTopic(TOP.find(t => t.id == b.dataset.tp), "Estudar"));
+  if ($("entbad")) $("entbad").onclick = () => entStart({ ids: bad.map(q => q.id), role: c.o.role });
+  $("entnew").onclick = () => { ENTC = null; rEnt() };
+  rateBind(el, () => entEnd(el));
+}
+
+function entSetup(el) {
+  S.ent = S.ent || { hist: [], last: {} };
+  ENTSET = ENTSET || { role: "sd", n: 5, rh: true, only: false };
+  const B = entBank(), o = ENTSET, cnt = r => B.filter(x => x.area != "rh" && (r == "mix" || x.area == r)).length, any = TOP.some(t => tStatus(t) != "new");
+  let h = `<div class="card entin"><div class="eav big">👩‍💼</div><div><div class="q">Como funciona</div><ol class="wl"><li><span>A entrevistadora faz a pergunta <b>em inglês</b>, como em muitas vagas. Toque em 🔊 para ouvir.</span></li><li><span>Você responde <b>falando</b> (o 🎤 escreve por você) ou digitando.</span></li><li><span>Compare com a <b>resposta modelo</b> e dê sua nota. O que faltou volta primeiro da próxima vez.</span></li></ol></div></div>`;
+  h += `<h2>Para qual vaga?</h2><div class="eroles">` + Object.entries(ENT_ROLES).map(([k, [ic, t, d]]) => `<button class="note tc${o.role == k ? " on" : ""}" data-role="${k}"><span class="ic">${ic}</span><span class="tx"><b>${t}</b><span class="mu">${d} ${cnt(k)} perguntas.</span></span></button>`).join("") + `</div>`;
+  h += `<h2>Quantas perguntas?</h2><div class="pills">${[3, 5, 8].map(x => `<button class="pill${o.n == x ? " on" : ""}" data-n="${x}">${x}${x == 3 ? " · rápida" : x == 8 ? " · completa" : ""}</button>`).join("")}</div>`;
+  h += `<label class="it eopt"><input type="checkbox" id="entrh" ${o.rh ? "checked" : ""}><span>Começar com uma pergunta de RH (ex.: <i>Can you tell me a little about yourself?</i>)</span></label>`;
+  if (any) h += `<label class="it eopt"><input type="checkbox" id="entonly" ${o.only ? "checked" : ""}><span>Só de tópicos que já comecei</span></label>`;
+  h += `<div class="nextc"><button class="btn p" id="entgo">🎤 Começar a entrevista</button></div>`;
+  const hist = (S.ent.hist || []).slice(0, 5);
+  if (hist.length) h += `<h2>Suas últimas entrevistas</h2>` + hist.map(x => { const r = x.role.startsWith("topic:") ? (TOP.find(t => t.id == x.role.slice(6)) || { n: "tópico" }).n : (ENT_ROLES[x.role] || ENT_ROLES.mix)[1]; return `<div class="card eli"><span class="er">${x.s >= 80 ? "😃" : x.s >= 50 ? "🙂" : "😬"}</span><div><b>${x.s}% · ${esc(r)}</b><span class="mu">${x.d.split("-").reverse().join("/")} · ${x.n} perguntas</span></div></div>` }).join("");
+  el.innerHTML = h;
+  el.querySelectorAll("[data-role]").forEach(b => b.onclick = () => { o.role = b.dataset.role; entSetup(el) });
+  el.querySelectorAll("[data-n]").forEach(b => b.onclick = () => { o.n = +b.dataset.n; entSetup(el) });
+  $("entrh").onchange = e => { o.rh = e.target.checked };
+  if ($("entonly")) $("entonly").onchange = e => { o.only = e.target.checked };
+  $("entgo").onclick = () => entStart(o);
+}
+
+/* cartão no fim da explicação de um tópico */
+function entCard(t) {
+  const n = entBank().filter(x => x.tp == t.id).length;
+  if (!n) return "";
+  return `<div class="card entc"><div class="q">🎤 Treine para a entrevista</div><p class="mu">${n} pergunta${n > 1 ? "s" : ""} deste tópico que costuma${n > 1 ? "m" : ""} cair em entrevista. Responda falando e compare com a resposta modelo.</p><div class="row"><button class="btn" id="entt">Simular agora</button></div></div>`;
+}
+
+/* ---------- avaliação rápida (vai como feedback) ---------- */
+const RATE_OPS = [["👍", "Gostei"], ["😐", "Mais ou menos"], ["👎", "Ficou confuso"]];
+function rateCard(key, label) {
+  S.rate = S.rate || {};
+  const done = S.rate[key], p = RATEP[key];
+  if (done) return `<div class="card rate ok"><span>${RATE_OPS[done.v][0]}</span><p class="mu">Obrigado pela avaliação! Ela ajuda a melhorar o curso.</p></div>`;
+  let h = `<div class="card rate" data-rk="${esc(key)}"><div class="q">Como foi ${esc(label)}?</div><div class="rops">${RATE_OPS.map(([ic, t], v) => `<button class="${p && p.v === v ? "on" : ""}" data-rv="${v}"><span>${ic}</span>${t}</button>`).join("")}</div>`;
+  if (p) h += `<textarea class="rtx" placeholder="Quer contar o porquê? (opcional) O que ajudou, o que confundiu, o que faltou...">${esc(p.txt || "")}</textarea><p class="mu rmsg"></p><div class="row"><button class="btn p" data-rsend="1">Enviar</button></div>`;
+  return h + `</div>`;
+}
+function rateBind(el, again) {
+  el.querySelectorAll(".rate[data-rk]").forEach(box => {
+    const key = box.dataset.rk;
+    box.querySelectorAll("[data-rv]").forEach(b => b.onclick = () => { RATEP[key] = { v: +b.dataset.rv, txt: (RATEP[key] || {}).txt || "" }; again() });
+    const ta = box.querySelector(".rtx");
+    if (ta) ta.oninput = () => { RATEP[key].txt = ta.value };
+    const s = box.querySelector("[data-rsend]");
+    if (s) s.onclick = async () => {
+      const p = RATEP[key], A = window.soclabAccount, m = box.querySelector(".rmsg");
+      if (!A) { m.textContent = "Sem conexão agora. Tente de novo daqui a pouco."; return }
+      s.disabled = true; s.textContent = "Enviando…";
+      try {
+        await A.send(window.soclabWhere ? window.soclabWhere() : key, `Avaliação (${key}): ${RATE_OPS[p.v][0]} ${RATE_OPS[p.v][1]}` + (p.txt.trim() ? " · " + p.txt.trim() : ""));
+        S.rate[key] = { v: p.v, d: new Date().toISOString().slice(0, 10) }; delete RATEP[key]; save(); again();
+      } catch (e) { s.disabled = false; s.textContent = "Enviar"; m.textContent = "Não deu para enviar agora. Confira a internet e tente de novo." }
+    };
+  });
+}
+
+/* ---------- convite para entrar na conta (tela Hoje) ---------- */
+function nudgeCard() {
+  const A = window.soclabAccount;
+  if (!A || !A.ready || A.user || (S.nudge || 0) > Date.now()) return "";
+  const n = Object.values(S.tdone || {}).filter(Boolean).length + (S.hist || []).length + Object.keys(S.sd || {}).length + Object.keys(S.read || {}).length;
+  if (n < 2) return "";
+  return `<div class="card nudge"><span class="ni">☁️</span><div><div class="q">Seu progresso está só neste aparelho</div><p class="mu">Entre com seu e-mail para não perder nada e continuar no celular ou no computador. Sem senha: chega um código de 6 números.</p><div class="row"><button class="btn p" id="ndgo">Entrar com e-mail</button><button class="btn ghost" id="ndno">Agora não</button></div></div></div>`;
+}
+function nudgeBind(el, again) {
+  if ($("ndgo")) $("ndgo").onclick = () => window.soclabAccount && window.soclabAccount.open();
+  if ($("ndno")) $("ndno").onclick = () => { S.nudge = Date.now() + 7 * 864e5; save(); again() };
+}
+/* <<< curso */
 rC();rT();$("s2").textContent=MQ.length;$("s3").textContent=TOP.length;if(!openHash()){goTab(7);welcome()}window.addEventListener("hashchange",openHash);
 /* de volta do lab (outra aba): relê o progresso */
 loadLab().then(refreshViews);window.addEventListener("focus",()=>loadLab().then(refreshViews));
 /* o progresso deste navegador mudou (veio da nuvem, ou a conta saiu): relê e redesenha */
 /* onde a pessoa está (vai junto com o feedback) */
-window.soclabWhere=()=>{const on=[...document.querySelectorAll("main>div")].find(x=>!x.classList.contains("hide"));const n=on?+on.id.slice(1):7;if(n==4&&TP)return"Curso · "+TP.n+" · aba "+TS;if(n==9&&TKC)return"Curso · Chamados · "+TKC.t.id;return"Curso · "+(PHT[n]?PHT[n][0]:"Hoje")};
+window.soclabWhere=()=>{const on=[...document.querySelectorAll("main>div")].find(x=>!x.classList.contains("hide"));const n=on?+on.id.slice(1):7;if(n==4&&TP)return"Curso · "+TP.n+" · aba "+TS;if(n==9&&TKC)return"Curso · Chamados · "+TKC.t.id;if(n==10&&typeof ENTC!="undefined"&&ENTC)return"Curso · Entrevista · "+entWhere();return"Curso · "+(PHT[n]?PHT[n][0]:"Hoje")};
 window.soclabReload=()=>{let o={};try{o=JSON.parse(localStorage.getItem("soclab-curso")||"{}")||{}}catch(e){}Object.keys(S).forEach(k=>delete S[k]);Object.assign(S,{done:{},known:{},notes:[]},o);S.miss=S.miss||{};S.hist=S.hist||[];S.tdone=S.tdone||{};S.apps=S.apps||[];rC();loadLab().then(refreshViews)};
 </script>
 <script type="module">
