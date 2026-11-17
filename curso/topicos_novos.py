@@ -282,7 +282,9 @@ IR = {
 from topicos_servicedesk import SD_RESUMOS, SD_TOPICS  # noqa: E402  (fase 1: Service Desk)
 from topicos_soc2 import SOC2_RESUMOS, SOC2_TOPICS  # noqa: E402  (fase 2: Sysmon, detecção, threat intel)
 
-NEW_TOPICS = [POWERSHELL, LOGS, SIEM, PHISHING, IR] + SD_TOPICS + SOC2_TOPICS
+from topicos_extra import EXTRA_RESUMOS, EXTRA_TOPICS  # noqa: E402  (backup na fase 1, vulnerabilidades na fase 2)
+
+NEW_TOPICS = [POWERSHELL, LOGS, SIEM, PHISHING, IR] + SD_TOPICS + SOC2_TOPICS + EXTRA_TOPICS
 
 # A trilha do curso: os módulos na ordem de estudo. "f" abre uma fase (título, cor e descrição).
 # Fase 1 é a fundação de Service Desk / IT Support; fase 2 é o SOC.
@@ -299,16 +301,16 @@ TRILHA = [
      "d": "IP, DNS, portas e protocolos: como as máquinas conversam e por que 'a internet caiu'."},
     {"n": "Linha de comando", "ic": "⌨️", "ids": ["wcli", "powershell", "linux"],
      "d": "CMD, PowerShell e Bash para diagnosticar e ler logs. Tem desafios práticos no lab."},
-    {"n": "O trabalho no Service Desk", "ic": "🎧", "ids": ["atend", "trouble", "contas"],
-     "d": "Atendimento, troubleshooting, contas e Microsoft 365. Pratique na Fila de chamados."},
+    {"n": "O trabalho no Service Desk", "ic": "🎧", "ids": ["atend", "trouble", "contas", "backup"],
+     "d": "Atendimento, troubleshooting, contas e Microsoft 365, backup e discos. Pratique na Fila de chamados."},
     {"f": "Fase 2 · Segurança", "ft": "Analista de SOC", "fc": "#8b5cf6",
      "fd": "Com a base de suporte, o próximo passo: como pensa quem ataca e quem defende, logs, SIEM, phishing, resposta a incidentes e investigação.",
      "n": "Segurança: o básico", "ic": "🛡️", "ids": ["defsec", "offsec", "segso", "dados", "encoding"],
      "d": "Ataque e defesa, segurança do sistema e como os dados aparecem 'embaralhados' nos logs."},
     {"n": "O trabalho no SOC", "ic": "🔎", "ids": ["soc", "logs", "siem", "phishing", "ir"],
      "d": "O dia a dia do analista: logs, SIEM, phishing e resposta a incidentes. O que as vagas mais pedem."},
-    {"n": "Investigação e detecção", "ic": "🔬", "ids": ["sysmon", "deteccao", "cti"],
-     "d": "O que acontece depois do login: Sysmon e EDR, regras de detecção e threat intel com MITRE ATT&CK."},
+    {"n": "Investigação e detecção", "ic": "🔬", "ids": ["sysmon", "deteccao", "cti", "vuln"],
+     "d": "O que acontece depois do login: Sysmon e EDR, regras de detecção, threat intel com MITRE ATT&CK e vulnerabilidades."},
 ]
 
 # "Resumo de 1 minuto" de cada tópico novo (tela Recapitular).
@@ -356,3 +358,4 @@ RESUMOS = {
 }
 RESUMOS.update(SD_RESUMOS)
 RESUMOS.update(SOC2_RESUMOS)
+RESUMOS.update(EXTRA_RESUMOS)

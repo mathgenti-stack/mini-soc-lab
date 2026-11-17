@@ -156,6 +156,7 @@ nav a.lab{background:linear-gradient(135deg,#0b1726,#0f4c4a);color:#e8f1fa;box-s
 .pri.p1{background:#dc2626}.pri.p2{background:#c2410c}.pri.p3{background:#a16207}.pri.p4{background:#475569}
 .tks{position:static}.tks button{cursor:default;opacity:1}.tks button:hover{background:none;color:var(--mu)}.tks button.on:hover{color:#fff;background:linear-gradient(135deg,var(--ac),color-mix(in srgb,var(--ac) 75%,#0ea5e9))}
 .tks .sl{display:inline}
+@media(max-width:520px){.tks .sl{display:none}.tks button.on .sl{display:inline}}
 .sdfld{margin:14px 0}.sdfld label{display:block;font-weight:600;font-size:14px;margin-bottom:6px}
 .pills{display:flex;flex-wrap:wrap;gap:6px}
 .sdpri{margin:14px 0 4px;padding:10px 14px;border-radius:12px;background:var(--sf2);font-weight:600}

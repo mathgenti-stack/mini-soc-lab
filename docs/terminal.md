@@ -115,7 +115,7 @@ Limits: the container can still reach the internet (publishing a port needs a ne
 
 ## The challenges
 
-There are 44 challenges: 17 for Linux, 17 for PowerShell and 10 for CMD.
+There are 51 challenges: 20 for Linux, 19 for PowerShell and 12 for CMD.
 
 **Linux**, in four levels: **basics** (`wc`, `head`), **searching and pipes** (`grep`, `awk`, `sort | uniq -c`), **investigation on the two-week dataset** (CSV columns with `awk -F,` and `cut`), and **other formats** (Entra ID JSON with `jq`, Windows XML). Each one follows a scenario the dashboard also detects: the SSH brute force, the password spray that found `l.taylor`, and `c.evans`'s unusual Remote Desktop logon (R006).
 

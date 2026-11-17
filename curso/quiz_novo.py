@@ -319,5 +319,6 @@ Q = [
 
 from topicos_servicedesk import SD_Q  # noqa: E402
 from topicos_soc2 import SOC2_Q  # noqa: E402
+from topicos_extra import EXTRA_Q  # noqa: E402
 
-Q = Q + SD_Q + SOC2_Q
+Q = Q + SD_Q + SOC2_Q + EXTRA_Q

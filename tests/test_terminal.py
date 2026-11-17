@@ -60,6 +60,10 @@ EXPECTED = {
     "linux-15": lambda: next(e["ParentImage"] for e in _sysmon() if e["EventID"] == 1 and e["Image"].endswith("powershell.exe")),
     "linux-16": lambda: str(Counter(r["host"] for r in _proxy_rows() if r["client_ip"] == "10.10.1.16").most_common(1)[0][1]),
     "linux-17": lambda: next(r["bytes_out"] for r in _proxy_rows() if r["host"] == "files.example.org"),
+    "linux-18": lambda: next(e["TargetObject"].split("\\")[-1] for e in _sysmon() if e["EventID"] == 13 and "\Run\\" in e["TargetObject"]),
+    "linux-19": lambda: next(e["TargetFilename"] for e in _sysmon()
+                             if e["EventID"] == 11 and e["Image"].endswith("powershell.exe") and e["TargetFilename"].endswith(".dll")),
+    "linux-20": lambda: next(r["url"] for r in _proxy_rows() if "WindowsPowerShell" in r["user_agent"]),
 }
 
 
@@ -117,6 +121,8 @@ POWERSHELL_EXPECTED = {
     "ps-15": lambda: next(e["Image"] for e in _sysmon() if e["EventID"] == 1 and e["ParentImage"].endswith("powershell.exe")),
     "ps-16": lambda: Counter(r["host"] for r in _proxy_rows() if r["client_ip"] == "10.10.1.16").most_common(1)[0][0],
     "ps-17": lambda: str(sum(e["EventID"] == 1 and e["ParentImage"].endswith("rundll32.exe") for e in _sysmon())),
+    "ps-18": lambda: next(e["QueryResults"] for e in _sysmon() if e["EventID"] == 22 and e["QueryName"] == "cdn-update.example.net"),
+    "ps-19": lambda: next(e["TargetFilename"] for e in _sysmon() if e["EventID"] == 11 and e["TargetFilename"].endswith(".zip")),
 }
 CMD_EXPECTED = {
     "cmd-01": lambda: str(len(load_challenges().files("cmd"))),
@@ -129,6 +135,8 @@ CMD_EXPECTED = {
     "cmd-08": lambda: next(line.split()[8] for line in _lines(AUTH) if "Accepted password" in line),
     "cmd-09": lambda: str(sum("cdn-update.example.net" in line for line in _lines("data/examples/proxy.csv"))),
     "cmd-10": lambda: str(sum(r["action"] == "blocked" for r in _proxy_rows())),
+    "cmd-11": lambda: str(sum(r["client_ip"] == "10.10.1.16" for r in _proxy_rows())),
+    "cmd-12": lambda: str(sum("cmd.exe /c" in line for line in _lines("data/examples/sysmon.json"))),
 }
 ALL_EXPECTED = {**EXPECTED, **POWERSHELL_EXPECTED, **CMD_EXPECTED}
 BY_ENVIRONMENT = {"linux": EXPECTED, "powershell": POWERSHELL_EXPECTED, "cmd": CMD_EXPECTED}

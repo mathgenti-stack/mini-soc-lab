@@ -106,3 +106,11 @@ def test_account_and_feedback_reachable_on_a_phone():
     assert 'id="shacc"' in PAGE and 'id="shfb"' in PAGE
     assert "window.soclabAccount" in conta and "sc-hchip" in conta
     assert "grid-template-columns:repeat(6,1fr)" in PAGE  # six buttons in the bottom bar fit on one row
+
+
+def test_site_address_opens_the_course():
+    """The bare site address goes to the course; the course's lab links always carry ?lang=, so they stay in the lab."""
+    index = (ROOT / "index.html").read_text(encoding="utf-8")
+    assert 'if (!location.search) location.replace("estudar.html"' in index
+    lab_links = re.findall(r'href="\./([^"]*)"', PAGE)
+    assert lab_links and all(link.startswith("?lang=") for link in lab_links), lab_links

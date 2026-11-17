@@ -777,3 +777,8 @@ TICKETS = [
                  "modelo": "Inbound call 16:45 from a person claiming to be Roberto Faria (Finance Director), requesting urgent password + MFA reset, new password to be sent to (11) 98xxx-1234 (not the registered number +55 11 97xxx-5521).\nCaller failed identity verification (could not give employee ID or cost centre) and pushed to skip the process.\nSign-in logs: the real user signed in at 16:31 from the office on corporate laptop NB-DIR-02.\nRequest declined; NO password or MFA reset performed. Confirmed with Roberto Faria via office extension: he did not call.\nSuspected vishing/social engineering. Escalated to SOC with caller number and call time."},
     },
 ]
+
+# Mais chamados (BitLocker, disco cheio, unidade de rede, arquivo apagado, relógio e ransomware)
+from chamados_extra import TICKETS_EXTRA  # noqa: E402
+
+TICKETS = TICKETS + TICKETS_EXTRA

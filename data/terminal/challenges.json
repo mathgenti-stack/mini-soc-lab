@@ -450,6 +450,75 @@
       }
     },
     {
+      "id": "linux-18",
+      "environments": ["linux"],
+      "level": 4,
+      "topic": "json",
+      "files": ["logs/sysmon.json"],
+      "roadmap": ["linux", "sysmon", "cti"],
+      "title": {"en": "Sysmon: how does it come back?", "pt-BR": "Sysmon: como ele volta?"},
+      "question": {
+        "en": "Two days after the password spray, `l.taylor` (computer `LON-WS-006`, address `10.10.1.16`) opened an invoice that came by e-mail. Malware wants to survive a reboot. Sysmon Event ID 13 is a registry value being set, and `TargetObject` is the full registry path. One of them is under `...\\CurrentVersion\\Run`, the list of programs Windows starts at every logon. What is the name of the value the malware created (the last part of the path)? Answer with the name only.",
+        "pt-BR": "Dois dias depois do password spray, `l.taylor` (computador `LON-WS-006`, endereço `10.10.1.16`) abriu uma fatura que chegou por e-mail. Malware quer sobreviver a uma reinicialização. O Event ID 13 do Sysmon é um valor sendo gravado no registro, e `TargetObject` é o caminho completo. Um deles fica em `...\\CurrentVersion\\Run`, a lista de programas que o Windows abre a cada logon. Qual é o nome do valor que o malware criou (a última parte do caminho)? Responda só o nome."
+      },
+      "hints": [
+        {"en": "`jq -r '.[] | select(.EventID == 13) | .TargetObject' logs/sysmon.json` shows the path.", "pt-BR": "`jq -r '.[] | select(.EventID == 13) | .TargetObject' logs/sysmon.json` mostra o caminho."},
+        {"en": "Keep only what comes after the last backslash: `sed 's/.*\\\\//'` removes everything up to it.", "pt-BR": "Fique só com o que vem depois da última barra invertida: `sed 's/.*\\\\//'` apaga tudo até ela."}
+      ],
+      "answers": ["OneDriveUpdate"],
+      "solution": "jq -r '.[] | select(.EventID == 13) | .TargetObject' logs/sysmon.json | sed 's/.*\\\\//'",
+      "explanation": {
+        "en": "`OneDriveUpdate` in the user's Run key starts `rundll32.exe ...\\updater.dll,Start` at every logon. That is persistence through a Run key (MITRE T1547.001), and the name imitates a real program so nobody notices. Cleaning the machine means removing this value too, or the malware comes back after the reboot.",
+        "pt-BR": "`OneDriveUpdate` na chave Run do usuário abre `rundll32.exe ...\\updater.dll,Start` a cada logon. Isso é persistência pela chave Run (MITRE T1547.001), e o nome imita um programa de verdade para ninguém desconfiar. Limpar a máquina inclui apagar esse valor, senão o malware volta depois de reiniciar."
+      }
+    },
+    {
+      "id": "linux-19",
+      "environments": ["linux"],
+      "level": 4,
+      "topic": "json",
+      "files": ["logs/sysmon.json"],
+      "roadmap": ["linux", "sysmon", "ir"],
+      "title": {"en": "Sysmon: what did PowerShell drop?", "pt-BR": "Sysmon: o que o PowerShell salvou?"},
+      "question": {
+        "en": "Two days after the password spray, `l.taylor` (computer `LON-WS-006`, address `10.10.1.16`) opened an invoice that came by e-mail. Sysmon Event ID 11 is a file being created: `Image` is the program that wrote it and `TargetFilename` is the file. Which `.dll` file did `powershell.exe` write to disk? Answer with the full path or the file name.",
+        "pt-BR": "Dois dias depois do password spray, `l.taylor` (computador `LON-WS-006`, endereço `10.10.1.16`) abriu uma fatura que chegou por e-mail. O Event ID 11 do Sysmon é um arquivo sendo criado: `Image` é o programa que gravou e `TargetFilename` é o arquivo. Qual arquivo `.dll` o `powershell.exe` gravou no disco? Responda com o caminho completo ou o nome do arquivo."
+      },
+      "hints": [
+        {"en": "Filter with `select(.EventID == 11 and (.Image | endswith(\"powershell.exe\")))`.", "pt-BR": "Filtre com `select(.EventID == 11 and (.Image | endswith(\"powershell.exe\")))`."},
+        {"en": "Add `and (.TargetFilename | endswith(\".dll\"))` and print `.TargetFilename` with `jq -r`.", "pt-BR": "Acrescente `and (.TargetFilename | endswith(\".dll\"))` e mostre `.TargetFilename` com `jq -r`."}
+      ],
+      "answers": ["C:\\Users\\l.taylor\\AppData\\Roaming\\Microsoft\\upd\\updater.dll", "updater.dll"],
+      "solution": "jq -r '.[] | select(.EventID == 11 and (.Image | endswith(\"powershell.exe\")) and (.TargetFilename | endswith(\".dll\"))) | .TargetFilename' logs/sysmon.json",
+      "explanation": {
+        "en": "PowerShell downloaded `updater.dll` into the user's AppData, a folder anyone can write to, and three seconds later `rundll32.exe` ran it. The path and the file's hash are IOCs: search for them on every other machine and block them on the EDR.",
+        "pt-BR": "O PowerShell baixou o `updater.dll` para o AppData do usuário, uma pasta onde qualquer um pode gravar, e três segundos depois o `rundll32.exe` o executou. O caminho e o hash do arquivo são IOCs: procure por eles em todas as outras máquinas e bloqueie no EDR."
+      }
+    },
+    {
+      "id": "linux-20",
+      "environments": ["linux"],
+      "level": 4,
+      "topic": "investigation",
+      "files": ["logs/proxy.csv"],
+      "roadmap": ["linux", "siem", "powershell"],
+      "title": {"en": "Proxy: the odd User-Agent", "pt-BR": "Proxy: o User-Agent estranho"},
+      "question": {
+        "en": "Two days after the password spray, `l.taylor` (computer `LON-WS-006`, address `10.10.1.16`) opened an invoice that came by e-mail. Column 12 of `logs/proxy.csv` is the `user_agent`: how the program introduces itself. Browsers say `Mozilla/5.0 ... Chrome`, but PowerShell says `WindowsPowerShell`. Which URL (column 5) was the first one requested with a PowerShell User-Agent? Answer with the URL.",
+        "pt-BR": "Dois dias depois do password spray, `l.taylor` (computador `LON-WS-006`, endereço `10.10.1.16`) abriu uma fatura que chegou por e-mail. A coluna 12 de `logs/proxy.csv` é o `user_agent`: como o programa se apresenta. Navegadores dizem `Mozilla/5.0 ... Chrome`, mas o PowerShell diz `WindowsPowerShell`. Qual URL (coluna 5) foi a primeira pedida com um User-Agent do PowerShell? Responda com a URL."
+      },
+      "hints": [
+        {"en": "`grep WindowsPowerShell logs/proxy.csv` shows the lines.", "pt-BR": "`grep WindowsPowerShell logs/proxy.csv` mostra as linhas."},
+        {"en": "With awk: `awk -F, '$12 ~ /WindowsPowerShell/ {print $5}' logs/proxy.csv | head -1`.", "pt-BR": "Com awk: `awk -F, '$12 ~ /WindowsPowerShell/ {print $5}' logs/proxy.csv | head -1`."}
+      ],
+      "answers": ["http://cdn-update.example.net/s.ps1", "cdn-update.example.net/s.ps1", "s.ps1"],
+      "solution": "awk -F, '$12 ~ /WindowsPowerShell/ {print $5}' logs/proxy.csv | head -1",
+      "explanation": {
+        "en": "`s.ps1` is the script the hidden PowerShell downloaded right after the Word document opened. A PowerShell User-Agent on a user's machine is rare, so it makes a good SIEM hunt: list the hosts that send it and the domains they reach.",
+        "pt-BR": "O `s.ps1` é o script que o PowerShell escondido baixou logo depois que o documento do Word abriu. User-Agent de PowerShell na máquina de um usuário é raro, então vira uma boa busca no SIEM: liste as máquinas que o enviam e os domínios que elas acessam."
+      }
+    },
+    {
       "id": "ps-01",
       "environments": ["powershell"],
       "level": 1,
@@ -841,6 +910,52 @@
       }
     },
     {
+      "id": "ps-18",
+      "environments": ["powershell"],
+      "level": 4,
+      "topic": "json",
+      "files": ["logs/sysmon.json"],
+      "roadmap": ["powershell", "sysmon", "cti"],
+      "title": {"en": "Sysmon: where is the server?", "pt-BR": "Sysmon: onde fica o servidor?"},
+      "question": {
+        "en": "Two days after the password spray, `l.taylor` (computer `LON-WS-006`, address `10.10.1.16`) opened an invoice that came by e-mail. Sysmon Event ID 22 is a DNS query: `QueryName` is the name asked and `QueryResults` the answer. Threat intel only gave the domain `cdn-update.example.net`. To which IP address did it resolve? Answer with the IP.",
+        "pt-BR": "Dois dias depois do password spray, `l.taylor` (computador `LON-WS-006`, endereço `10.10.1.16`) abriu uma fatura que chegou por e-mail. O Event ID 22 do Sysmon é uma consulta DNS: `QueryName` é o nome perguntado e `QueryResults` a resposta. A threat intel só passou o domínio `cdn-update.example.net`. Para qual endereço IP ele apontou? Responda com o IP."
+      },
+      "hints": [
+        {"en": "`$ev = Get-Content logs/sysmon.json -Raw | ConvertFrom-Json` loads the events; filter `EventID -eq 22` and the `QueryName`.", "pt-BR": "`$ev = Get-Content logs/sysmon.json -Raw | ConvertFrom-Json` carrega os eventos; filtre `EventID -eq 22` e o `QueryName`."},
+        {"en": "There are two queries with the same answer: `Select-Object -First 1 -ExpandProperty QueryResults`.", "pt-BR": "Há duas consultas com a mesma resposta: `Select-Object -First 1 -ExpandProperty QueryResults`."}
+      ],
+      "answers": ["198.51.100.23"],
+      "solution": "$ev = Get-Content logs/sysmon.json -Raw | ConvertFrom-Json; $ev | Where-Object { $_.EventID -eq 22 -and $_.QueryName -eq 'cdn-update.example.net' } | Select-Object -First 1 -ExpandProperty QueryResults",
+      "explanation": {
+        "en": "The domain pointed to `198.51.100.23`. Now you have two IOCs: block both on the firewall and search the SIEM for any other machine that talked to that IP, even without asking DNS (malware sometimes uses the IP directly).",
+        "pt-BR": "O domínio apontou para `198.51.100.23`. Agora você tem dois IOCs: bloqueie os dois no firewall e procure no SIEM outras máquinas que falaram com esse IP, mesmo sem consultar o DNS (às vezes o malware usa o IP direto)."
+      }
+    },
+    {
+      "id": "ps-19",
+      "environments": ["powershell"],
+      "level": 4,
+      "topic": "json",
+      "files": ["logs/sysmon.json"],
+      "roadmap": ["powershell", "sysmon", "ir"],
+      "title": {"en": "Sysmon: what was packed?", "pt-BR": "Sysmon: o que foi empacotado?"},
+      "question": {
+        "en": "Two days after the password spray, `l.taylor` (computer `LON-WS-006`, address `10.10.1.16`) opened an invoice that came by e-mail. Before stealing data, attackers usually pack it into one file. Sysmon Event ID 11 is a file being created (`TargetFilename`). Which `.zip` file was created on the computer? Answer with the full path or the file name.",
+        "pt-BR": "Dois dias depois do password spray, `l.taylor` (computador `LON-WS-006`, endereço `10.10.1.16`) abriu uma fatura que chegou por e-mail. Antes de roubar dados, o atacante costuma juntar tudo num arquivo só. O Event ID 11 do Sysmon é um arquivo sendo criado (`TargetFilename`). Qual arquivo `.zip` foi criado no computador? Responda com o caminho completo ou o nome do arquivo."
+      },
+      "hints": [
+        {"en": "Filter `$_.EventID -eq 11` and compare the name with `-like '*.zip'`.", "pt-BR": "Filtre `$_.EventID -eq 11` e compare o nome com `-like '*.zip'`."},
+        {"en": "`Select-Object -ExpandProperty TargetFilename` shows only the path.", "pt-BR": "`Select-Object -ExpandProperty TargetFilename` mostra só o caminho."}
+      ],
+      "answers": ["C:\\Users\\Public\\d.zip", "d.zip"],
+      "solution": "$ev = Get-Content logs/sysmon.json -Raw | ConvertFrom-Json; $ev | Where-Object { $_.EventID -eq 11 -and $_.TargetFilename -like '*.zip' } | Select-Object -ExpandProperty TargetFilename",
+      "explanation": {
+        "en": "`d.zip` in `C:\\Users\\Public`, made by PowerShell from the user's `Contratos` folder. Packing data before sending it out is MITRE T1560 (Archive Collected Data). Two minutes later the proxy shows a big upload to `files.example.org`: the stolen contracts.",
+        "pt-BR": "`d.zip` em `C:\\Users\\Public`, feito pelo PowerShell a partir da pasta `Contratos` do usuário. Juntar dados antes de enviar é o MITRE T1560 (Archive Collected Data). Dois minutos depois o proxy mostra um envio grande para `files.example.org`: os contratos roubados."
+      }
+    },
+    {
       "id": "cmd-01",
       "environments": ["cmd"],
       "level": 1,
@@ -1068,6 +1183,52 @@
       "explanation": {
         "en": "Two gambling sites, blocked by the category policy: policy violations, not attacks. The interesting part is the opposite: the malware's domain was `allowed`, because it was new and uncategorised. A proxy only blocks what it already knows, which is why the analyst still has to look at allowed traffic.",
         "pt-BR": "Dois sites de apostas, bloqueados pela política de categorias: violação de política, não ataque. O interessante é o contrário: o domínio do malware foi `allowed`, porque era novo e sem categoria. O proxy só bloqueia o que já conhece; por isso o analista ainda precisa olhar o tráfego permitido."
+      }
+    },
+    {
+      "id": "cmd-11",
+      "environments": ["cmd"],
+      "level": 4,
+      "topic": "find",
+      "files": ["logs/proxy.csv"],
+      "roadmap": ["wcli", "siem"],
+      "title": {"en": "Proxy: the busiest machine", "pt-BR": "Proxy: a máquina mais ativa"},
+      "question": {
+        "en": "Two days after the password spray, `l.taylor` (computer `LON-WS-006`, address `10.10.1.16`) opened an invoice that came by e-mail. In `logs\\proxy.csv`, column 2 is `client_ip`. How many requests in total came from `10.10.1.16`? Answer with the number only.",
+        "pt-BR": "Dois dias depois do password spray, `l.taylor` (computador `LON-WS-006`, endereço `10.10.1.16`) abriu uma fatura que chegou por e-mail. Em `logs\\proxy.csv`, a coluna 2 é o `client_ip`. Quantas requisições ao todo saíram do `10.10.1.16`? Responda só o número."
+      },
+      "hints": [
+        {"en": "`find /c` counts lines. Put commas around the IP so it only matches the column: `\",10.10.1.16,\"`.", "pt-BR": "`find /c` conta linhas. Coloque vírgulas em volta do IP para bater só com a coluna: `\",10.10.1.16,\"`."},
+        {"en": "`type logs\\proxy.csv | find /c \",10.10.1.16,\"`", "pt-BR": "`type logs\\proxy.csv | find /c \",10.10.1.16,\"`"}
+      ],
+      "answers": ["47"],
+      "solution": "type logs\\proxy.csv | find /c \",10.10.1.16,\"",
+      "explanation": {
+        "en": "47 of the 132 requests, far more than any other computer (the next one has 17). Most of them go to the same domain once a minute: the beacon. \"Which machine is talking much more than the others?\" is a quick first question in any proxy investigation.",
+        "pt-BR": "47 das 132 requisições, muito mais que qualquer outro computador (o segundo tem 17). A maioria vai para o mesmo domínio uma vez por minuto: o beacon. \"Qual máquina está falando muito mais que as outras?\" é uma boa primeira pergunta em qualquer investigação de proxy."
+      }
+    },
+    {
+      "id": "cmd-12",
+      "environments": ["cmd"],
+      "level": 4,
+      "topic": "find",
+      "files": ["logs/sysmon.json"],
+      "roadmap": ["wcli", "sysmon", "cti"],
+      "title": {"en": "Sysmon: the attacker looks around", "pt-BR": "Sysmon: o atacante olha em volta"},
+      "question": {
+        "en": "Two days after the password spray, `l.taylor` (computer `LON-WS-006`, address `10.10.1.16`) opened an invoice that came by e-mail. Once inside, the malware ran commands through `cmd.exe /c` to learn about the network. How many lines of `logs\\sysmon.json` contain `cmd.exe /c`? Answer with the number only.",
+        "pt-BR": "Dois dias depois do password spray, `l.taylor` (computador `LON-WS-006`, endereço `10.10.1.16`) abriu uma fatura que chegou por e-mail. Já dentro da máquina, o malware rodou comandos pelo `cmd.exe /c` para conhecer a rede. Quantas linhas de `logs\\sysmon.json` têm `cmd.exe /c`? Responda só o número."
+      },
+      "hints": [
+        {"en": "`find \"text\" file` shows the lines with the text; `/c` only counts them.", "pt-BR": "`find \"texto\" arquivo` mostra as linhas com o texto; `/c` só conta."},
+        {"en": "`type logs\\sysmon.json | find /c \"cmd.exe /c\"`", "pt-BR": "`type logs\\sysmon.json | find /c \"cmd.exe /c\"`"}
+      ],
+      "answers": ["3"],
+      "solution": "type logs\\sysmon.json | find /c \"cmd.exe /c\"",
+      "explanation": {
+        "en": "`whoami /all`, `net group \"domain admins\" /domain` and `nltest /dclist`: who am I, who are the admins and where are the domain controllers. That is discovery (MITRE T1033, T1069, T1482), the step before moving to other machines. Normal users almost never run these, so they make good detection rules.",
+        "pt-BR": "`whoami /all`, `net group \"domain admins\" /domain` e `nltest /dclist`: quem sou eu, quem são os administradores e onde ficam os controladores de domínio. Isso é reconhecimento (MITRE T1033, T1069, T1482), o passo antes de pular para outras máquinas. Usuário comum quase nunca roda esses comandos, por isso viram boas regras de detecção."
       }
     }
   ]

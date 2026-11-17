@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>Mini SOC Lab</title>
+    <script>
+      // O endereço do site abre o curso. O lab abre pelos links do curso ("Praticar", "Ir para o lab"),
+      // que sempre trazem ?lang=... (e ?challenge=... quando é um desafio).
+      if (!location.search) location.replace("estudar.html" + location.hash);
+    </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/browser@1.9.2/build/stlite.css" />
     <style>
       /* Celular: o lab mais compacto, para as abas aparecerem logo. O computador não muda. */
